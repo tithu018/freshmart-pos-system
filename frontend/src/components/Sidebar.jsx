@@ -16,10 +16,10 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { logout } from '../store/slices/authSlice'
+import { useSelector } from 'react-redux'
+import useLogout from '../hooks/useLogout'
 import Brand from './Brand'
 import { Avatar, useToast } from './ui'
 
@@ -44,6 +44,7 @@ export const cashierLinks = [
 ]
 
 export default function Sidebar({ open, onClose, mobile }) {
+  const { signOut, pending } = useLogout()
   const ref = useRef(null)
   useEffect(() => {
     if (!open || !mobile) return
@@ -81,9 +82,7 @@ export default function Sidebar({ open, onClose, mobile }) {
     (state) =>
       state.products.items.filter((item) => item.stock < item.minStock).length,
   )
-  const dispatch = useDispatch(),
-    navigate = useNavigate(),
-    toast = useToast()
+  const toast = useToast()
   const links = user.role === 'admin' ? adminLinks : cashierLinks
   return (
     <>
@@ -169,10 +168,8 @@ export default function Sidebar({ open, onClose, mobile }) {
               className="icon-button"
               aria-label="Sign out"
               title="Sign out"
-              onClick={() => {
-                dispatch(logout())
-                navigate('/login')
-              }}
+              onClick={signOut}
+              disabled={pending}
             >
               <LogOut size={18} />
             </button>

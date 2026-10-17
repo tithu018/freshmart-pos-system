@@ -19,13 +19,28 @@ import SalesHistory from '../pages/cashier/SalesHistory'
 import CashierProfile from '../pages/cashier/Profile'
 import { EmptyState } from '../components/ui'
 
-// These guards demonstrate navigation only; they are not authentication/security.
+// UI routing follows the verified server session; API permissions are enforced in Spring Security.
 function RoleGuard({ role }) {
   const user = useSelector((state) => state.auth.user)
   if (!user) return <Navigate to="/login" replace />
-  if (user.role !== role)
-    return <Navigate to={`/${user.role}/dashboard`} replace />
+  if (user.role !== role) return <Navigate to="/unauthorized" replace />
   return <Outlet />
+}
+function Unauthorized() {
+  const user = useSelector((state) => state.auth.user)
+  if (!user) return <Navigate to="/login" replace />
+  return (
+    <div className="not-found">
+      <EmptyState
+        title="This workspace isn’t available to your account"
+        description={`You are signed in as ${user.role === 'admin' ? 'an Admin' : 'a Cashier'}. Please use your assigned workspace.`}
+      >
+        <Link className="btn btn-primary mt-5" to={`/${user.role}/dashboard`}>
+          Back to my dashboard
+        </Link>
+      </EmptyState>
+    </div>
+  )
 }
 function HomeRedirect() {
   const user = useSelector((state) => state.auth.user)
@@ -55,6 +70,7 @@ export default function AppRoutes() {
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
       <Route element={<RoleGuard role="admin" />}>
         <Route path="/admin" element={<Layout />}>
           <Route index element={<Navigate to="dashboard" replace />} />

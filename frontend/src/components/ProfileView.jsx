@@ -79,7 +79,8 @@ export default function ProfileView() {
           }
         >
           <p className="form-intro">
-            Your contact details and workspace information.
+            Your account details. Name and phone edits are a local preview;
+            account changes are not connected yet.
           </p>
           <form
             onSubmit={(e) => {
@@ -88,7 +89,7 @@ export default function ProfileView() {
               dispatch(updateProfile({ ...form, name: form.name.trim() }))
               setEditing(false)
               setError('')
-              toast('Your profile has been updated.')
+              toast('Profile preview updated. Your login account is unchanged.')
             }}
           >
             <div className="form-grid">
@@ -104,6 +105,7 @@ export default function ProfileView() {
                 type="email"
                 required
                 {...field('email')}
+                readOnly
               />
               <Field
                 label="Phone number"

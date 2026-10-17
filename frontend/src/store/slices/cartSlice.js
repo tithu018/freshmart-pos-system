@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit'
-import { logout } from './authSlice'
+import { logout, sessionExpired, restoreSession } from './authSlice'
 
 const cartSlice = createSlice({
   name: 'cart',
@@ -28,9 +28,20 @@ const cartSlice = createSlice({
     },
   },
   extraReducers: (builder) =>
-    builder.addCase(logout, (state) => {
-      state.items = []
-    }),
+    builder
+      .addCase(logout.fulfilled, (state) => {
+        state.items = []
+      })
+      .addCase(sessionExpired, (state) => {
+        state.items = []
+      })
+      .addCase(restoreSession.rejected, (state, action) => {
+        if (
+          action.payload?.status === 401 ||
+          action.payload?.code === 'INVALID_SESSION'
+        )
+          state.items = []
+      }),
 })
 export const { addItem, changeQuantity, removeItem, clearCart } =
   cartSlice.actions

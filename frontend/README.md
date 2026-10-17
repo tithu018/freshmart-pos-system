@@ -1,4 +1,4 @@
-# FreshMart frontend — Task 2
+# FreshMart frontend — Tasks 2 and 3
 
 One responsive React application with a shared login and role-specific
 workspaces, built on the existing Vite, Redux Toolkit, and Tailwind CSS setup.
@@ -13,31 +13,35 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. Choose Admin or Cashier and use the prefilled
-details. Any valid email and nonempty password are accepted; credentials are
-not verified, stored, or transmitted. Use the sidebar sign-out button to try
-the other role. Refreshing resets the demo and returns you to login.
+Start the backend and PostgreSQL, then open http://localhost:5173. Sign in with
+`admin@freshmart.com` / `Admin@FreshMart123` or
+`cashier@freshmart.com` / `Cashier@FreshMart123` (development accounts only).
+Your server-assigned role selects the workspace. Use either sign-out button
+to change accounts. Refresh restores authentication, while mock business data
+resets. See [Task 3 authentication](../docs/authentication.md) for full setup.
 
 ```sh
 npm run build
 npm run preview
+npm test
 ```
 
 The production build goes to `dist/`. Preview runs on port 4173. Node.js
-22.12+ is required, as in Task 1. No backend or database is required. The
-existing `.env` and Vite configuration are unchanged and the API URL is unused.
+22.12+ is required, as in Task 1. Login requires the Spring Boot backend and
+PostgreSQL. The existing Vite configuration is unchanged;
+`VITE_API_BASE_URL` in `.env` supplies the authentication API address.
 
 ## Routes
 
 | Workspace | Paths |
 | --- | --- |
-| Shared | `/login` |
+| Shared | `/login`, `/unauthorized` |
 | Admin | `/admin/dashboard`, `/admin/pos`, `/admin/products`, `/admin/categories`, `/admin/inventory`, `/admin/sales`, `/admin/customers`, `/admin/employees`, `/admin/reports`, `/admin/settings`, `/admin/profile` |
 | Cashier | `/cashier/dashboard`, `/cashier/pos`, `/cashier/sales-history`, `/cashier/profile` |
 
 `/` and workspace roots redirect to the appropriate entry page. Role guards
-demonstrate page/menu visibility only and must not be treated as authentication
-or server-side authorization. Unknown paths display a recovery page.
+use the verified server role. Spring Security separately enforces API
+authorization. Unknown paths display a recovery page.
 
 ## Structure
 
@@ -45,12 +49,15 @@ or server-side authorization. Unknown paths display a recovery page.
   fields, modal, toasts, charts, product form, and shared page views.
 - `src/pages/`: all Admin, Cashier, and login route components. Shared POS,
   dashboard, profile, sales, and directory views avoid duplicated UI.
-- `src/routes/AppRoutes.jsx`: single React Router tree and demo role guards.
+- `src/routes/AppRoutes.jsx`: single React Router tree and role guards.
 - `src/data/mockData.js`: catalog, categories, people, transactions, and chart
   fixtures. The reference date is October 17, 2026; prices use USD.
-- `src/store/slices/`: demo role/profile, catalog/categories, cart, sales,
+- `src/store/slices/`: authenticated user, catalog/categories, cart, sales,
   and management/settings state. Inventory derives from the catalog to keep
-  counts consistent. No backend services are imported or called.
+  counts consistent. Only authentication calls the backend.
+- `src/services/`: credentialed API requests, CSRF handshake, and auth service.
+- `src/components/AuthSession.jsx`: refresh restoration and expiry handling.
+- `src/hooks/useLogout.js`: shared server logout handling.
 - `src/utils/format.js`: shared formatting and CSV downloads.
 - `src/index.css`: Tailwind entry, theme tokens, reusable component styles,
   responsive breakpoints, and reduced-motion support.
@@ -67,14 +74,17 @@ or server-side authorization. Unknown paths display a recovery page.
   and complete a mock checkout. New sales appear in history and reduce stock.
 - View sale details; export products, inventory, sales, and reports as CSV.
 - Add/edit customer and employee directory entries. Directory roles do not
-  create login accounts or change the current demo role.
-- Update profile information, store details, tax percentage, receipt footer,
+  create login accounts or change the authenticated role.
+- Preview name/phone edits locally (account email/ID/role stay read-only).
+  Update mock store details, tax percentage, receipt footer,
   and low-stock notification preference for the current in-memory session.
 - Dashboard trend charts are explicitly marked illustrative. Reports and
   payment totals are derived from mock transactions.
 
-All edits are temporary and reset on refresh. No real authentication,
-payments, database operations, backend integration, or next-task work is included.
+Business edits remain temporary and reset on refresh. JWT authentication is
+connected; product, inventory, POS, sales, and other business services are not.
+There are no real payments or Task 4 features. The Task 3 file inventory and
+authentication details are in [docs/authentication.md](../docs/authentication.md).
 
 ## Task 2 file inventory
 

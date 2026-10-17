@@ -33,8 +33,8 @@ export default function Layout() {
         <footer className="workspace-footer">
           <span>© 2026 FreshMart POS. Made for a fresher everyday.</span>
           <span>
-            <span className="status-dot" /> Frontend demo · Changes reset on
-            refresh
+            <span className="status-dot" /> Signed in · Business data remains a
+            demo
           </span>
         </footer>
       </div>

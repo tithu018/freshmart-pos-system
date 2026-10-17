@@ -8,12 +8,13 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { Avatar } from './ui'
-import { logout } from '../store/slices/authSlice'
+import useLogout from '../hooks/useLogout'
 
 export default function Header({ onMenu }) {
+  const { signOut, pending } = useLogout()
   const user = useSelector((state) => state.auth.user)
   const lowStockCount = useSelector(
     (state) => state.products.items.filter((p) => p.stock < p.minStock).length,
@@ -24,8 +25,7 @@ export default function Header({ onMenu }) {
   const [search, setSearch] = useState(''),
     [panel, setPanel] = useState(null)
   const ref = useRef(null),
-    navigate = useNavigate(),
-    dispatch = useDispatch()
+    navigate = useNavigate()
   useEffect(() => {
     const close = (event) => {
       if (!ref.current?.contains(event.target)) setPanel(null)
@@ -70,7 +70,7 @@ export default function Header({ onMenu }) {
       </form>
       <div className="header-right" ref={ref}>
         <span className="demo-pill">
-          <span /> Demo workspace
+          <span /> Connected workspace
         </span>
         <div className="relative">
           <button
@@ -137,13 +137,8 @@ export default function Header({ onMenu }) {
               <Link to={`/${user.role}/profile`} onClick={() => setPanel(null)}>
                 <UserRound size={16} /> My profile
               </Link>
-              <button
-                onClick={() => {
-                  dispatch(logout())
-                  navigate('/login')
-                }}
-              >
-                <LogOut size={16} /> Sign out
+              <button onClick={signOut} disabled={pending}>
+                <LogOut size={16} /> {pending ? 'Signing out…' : 'Sign out'}
               </button>
             </div>
           )}

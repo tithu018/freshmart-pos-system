@@ -30,6 +30,10 @@ Verify the connection:
 psql -h localhost -p 5432 -U freshmart -d freshmart_pos -W -c "SELECT current_database();"
 ```
 
-This task creates no application tables or seed data. The backend has automatic
-schema creation and SQL initialization disabled. The files in `init/` are still
-empty placeholders for future work.
+Task 3 uses Flyway to create `app_users` and `flyway_schema_history` on backend
+startup. The migration lives in `backend/src/main/resources/db/migration/`.
+Hibernate validates the schema and does not recreate it. The dev profile adds
+missing Admin and Cashier accounts using BCrypt hashes. See
+[authentication setup](../docs/authentication.md) for credentials and testing.
+No product, inventory, POS, or sales tables are created. The files in `init/`
+remain placeholders; do not run them as a second initialization mechanism.

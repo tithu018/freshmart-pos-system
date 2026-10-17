@@ -17,24 +17,25 @@ import {
   Store,
   Users,
 } from 'lucide-react'
-import { demoLogin } from '../../store/slices/authSlice'
-import { demoUsers } from '../../data/mockData'
+import { login, clearAuthFeedback } from '../../store/slices/authSlice'
 import Brand from '../../components/Brand'
 import GroceryIllustration from '../../components/GroceryIllustration'
 import { Button } from '../../components/ui'
 
 export default function Login() {
   const [role, setRole] = useState('admin'),
-    [email, setEmail] = useState(demoUsers.admin.email),
-    [password, setPassword] = useState('freshmart'),
+    [email, setEmail] = useState(''),
+    [password, setPassword] = useState(''),
     [show, setShow] = useState(false)
   const dispatch = useDispatch(),
     navigate = useNavigate(),
-    user = useSelector((state) => state.auth.user)
+    { user, status, error, notice } = useSelector((state) => state.auth)
+  const pending = status === 'signingIn'
   if (user) return <Navigate to={`/${user.role}/dashboard`} replace />
   const chooseRole = (value) => {
     setRole(value)
-    setEmail(demoUsers[value].email)
+    if (import.meta.env.DEV) setEmail(`${value}@freshmart.com`)
+    dispatch(clearAuthFeedback())
   }
   return (
     <div className="login-page">
@@ -118,10 +119,18 @@ export default function Login() {
           <h2>Welcome back!</h2>
           <p>Let’s make today a fresh start.</p>
           <form
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault()
-              dispatch(demoLogin(role))
-              navigate(`/${role}/dashboard`)
+              try {
+                const session = await dispatch(
+                  login({ email, password }),
+                ).unwrap()
+                setPassword('')
+                navigate(`/${session.user.role}/dashboard`, { replace: true })
+              } catch {
+                // Redux presents the server error below without discarding the email.
+                setPassword('')
+              }
             }}
           >
             <label className="field">
@@ -132,6 +141,9 @@ export default function Login() {
                   required
                   type="email"
                   autoComplete="username"
+                  placeholder="you@freshmart.com"
+                  disabled={pending}
+                  maxLength={254}
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                 />
@@ -145,6 +157,9 @@ export default function Login() {
                   required
                   type={show ? 'text' : 'password'}
                   autoComplete="current-password"
+                  placeholder="Enter your password"
+                  disabled={pending}
+                  maxLength={72}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                 />
@@ -158,7 +173,7 @@ export default function Login() {
               </div>
             </label>
             <fieldset className="role-field">
-              <legend>Choose your workspace</legend>
+              <legend>Your workspace</legend>
               <div className="role-options">
                 {[
                   ['admin', 'Admin', 'Manage your store', ShieldCheck],
@@ -173,6 +188,7 @@ export default function Login() {
                       name="role"
                       value={value}
                       checked={role === value}
+                      disabled={pending}
                       onChange={() => chooseRole(value)}
                     />
                     <Icon size={20} />
@@ -185,8 +201,24 @@ export default function Login() {
                 ))}
               </div>
             </fieldset>
-            <Button type="submit" className="login-submit">
-              Sign in to FreshMart <ArrowRight size={17} />
+            {error && (
+              <p role="alert" className="auth-feedback auth-error">
+                {error}
+              </p>
+            )}
+            {notice && !error && (
+              <p role="status" className="auth-feedback auth-notice">
+                {notice}
+              </p>
+            )}
+            <Button
+              type="submit"
+              className="login-submit"
+              disabled={pending}
+              aria-busy={pending}
+            >
+              {pending ? 'Signing in…' : 'Sign in to FreshMart'}{' '}
+              <ArrowRight size={17} />
             </Button>
           </form>
           <div className="demo-info">
@@ -194,14 +226,14 @@ export default function Login() {
               <span className="demo-info-icon">
                 <Sparkles size={18} />
               </span>
-              <strong>Take a look around</strong>
+              <strong>One account. Your workspace.</strong>
               <BadgeText />
             </div>
             <p>
-              This is a frontend demo. Choose a role and use the prefilled
-              details, or enter any email and password.
+              Sign in with your FreshMart email and password. Your account
+              permissions determine which workspace opens.
             </p>
-            <small>No account needed. Changes reset on refresh.</small>
+            <small>Need an account? Contact your store administrator.</small>
           </div>
         </div>
         <p className="login-copyright">
@@ -214,5 +246,5 @@ export default function Login() {
   )
 }
 function BadgeText() {
-  return <span className="demo-label">DEMO</span>
+  return <span className="demo-label">SECURE</span>
 }
