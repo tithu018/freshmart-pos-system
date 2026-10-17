@@ -1,7 +1,8 @@
 # FreshMart POS System
 
 A supermarket POS and inventory management system for admin and cashier users.
-This first task sets up the development tools and application entry points only.
+Task 1 provides the development setup. Task 2 adds a responsive frontend demo
+with separate Admin and Cashier workspaces inside one React application.
 
 ## Requirements
 
@@ -23,8 +24,27 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. The page displays the project name and a setup
-message. The frontend runs independently of the backend and PostgreSQL.
+Open <http://localhost:5173>. The shared login page lets you choose **Admin** or
+**Cashier**. Use the prefilled details and click **Sign in to FreshMart**. This is
+a role-switching demo: any valid email and nonempty password are accepted, and
+no credentials are checked or sent anywhere. The frontend runs independently
+of the backend and PostgreSQL.
+
+Admin pages: Dashboard, Point of Sale, Products, Categories, Inventory, Sales,
+Customers, Employees, Reports, Settings, and My Profile. Cashier pages:
+Dashboard, Point of Sale, Sales History, and My Profile. Cashier sales history
+shows only that cashier's transactions. The UI redirects attempts to access
+the other role's workspace; this is a navigation demonstration, not security.
+
+You can search and filter tables, add/edit catalog and directory records,
+adjust inventory, export CSVs, edit your profile, and save store preferences.
+Add products to a POS order and complete a **demo sale** to update inventory
+and sales history. No real payment is collected. All state lives in Redux
+memory and resets on refresh, including the selected demo role. Mock data uses
+October 17, 2026 as its reference date and USD as its display currency.
+
+See [frontend/README.md](frontend/README.md) for the frontend structure,
+route map, and implementation notes.
 
 `frontend/.env` is already provided locally. After cloning, copy
 `frontend/.env.example` to `frontend/.env` (`Copy-Item .env.example .env` in
@@ -106,9 +126,10 @@ packaging. Running the packaged app still requires the database settings above.
 
 ## Scope
 
-The existing feature files remain empty. Login, products, inventory, POS, API
-routes, and other business features have not been implemented. Docker, Docker
-Compose, GitHub Actions, AWS, and Kubernetes files remain placeholders.
+Task 2 implements frontend UI and local mock interactions only. API service
+files remain placeholders. There is no backend integration, real
+authentication, database logic, or payment processing. The backend, database,
+Docker, Docker Compose, GitHub Actions, AWS, and Kubernetes setup is unchanged.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.
 Commit the `.env.example` files and frontend lockfile so others can reproduce
