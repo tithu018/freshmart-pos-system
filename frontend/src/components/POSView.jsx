@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -11,7 +11,6 @@ import {
   ScanBarcode,
   ShoppingBag,
   ShoppingCart,
-  Smartphone,
   Trash2,
   UserRound,
   X,
@@ -21,16 +20,22 @@ import {
   changeQuantity,
   clearCart,
   removeItem,
+  loadPOS,
+  submitCheckout,
+  setDiscount,
+  setPayment,
+  dismissReceipt,
+  restoreCheckout,
+  calculateTotals,
 } from '../store/slices/cartSlice'
-import { reduceStock } from '../store/slices/productSlice'
-import { addSale } from '../store/slices/salesSlice'
-import { DEMO_DATE } from '../data/mockData'
+import { readPendingCheckout } from '../services/checkoutService'
 import { money } from '../utils/format'
 import {
   Badge,
   Button,
   Card,
   EmptyState,
+  Field,
   Modal,
   PageHeading,
   SearchInput,
@@ -38,63 +43,75 @@ import {
 } from './ui'
 
 export default function POSView() {
-  const products = useSelector((state) => state.products.items),
-    categories = useSelector((state) => state.products.categories),
-    cart = useSelector((state) => state.cart.items),
-    user = useSelector((state) => state.auth.user),
-    settings = useSelector((state) => state.management.settings)
+  const {
+    products,
+    items: cart,
+    taxRate,
+    maxTotal,
+    discount,
+    payment,
+    receipt,
+    attempt,
+    submitting,
+    loading,
+    loaded,
+    loadError,
+    error: checkoutError,
+  } = useSelector((state) => state.cart)
+  const user = useSelector((state) => state.auth.user)
   const [params, setParams] = useSearchParams(),
     query = params.get('q') || ''
   const [category, setCategory] = useState('All items'),
-    [checkout, setCheckout] = useState(false),
-    [payment, setPayment] = useState('Cash'),
-    [receipt, setReceipt] = useState(null),
-    [checkoutError, setCheckoutError] = useState('')
+    [checkout, setCheckout] = useState(false)
   const dispatch = useDispatch(),
     toast = useToast()
+  useEffect(() => {
+    if (!user?.id) return
+    const saved = readPendingCheckout(user.id)
+    if (saved) dispatch(restoreCheckout(saved))
+    const refresh = () => dispatch(loadPOS())
+    refresh()
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [dispatch, user?.id])
+  const locked = submitting || !!attempt
+  const categories = useMemo(
+    () => [...new Set(products.map((p) => p.category))].sort(),
+    [products],
+  )
   const filtered = useMemo(
     () =>
       products.filter(
         (p) =>
-          `${p.name} ${p.sku}`.toLowerCase().includes(query.toLowerCase()) &&
+          `${p.name} ${p.sku} ${p.barcode || ''}`
+            .toLowerCase()
+            .includes(query.toLowerCase()) &&
           (category === 'All items' || p.category === category),
       ),
     [products, query, category],
   )
-  const subtotal =
-      Math.round(
-        cart.reduce((sum, item) => sum + item.price * item.quantity, 0) * 100,
-      ) / 100,
-    tax = Math.round(subtotal * settings.taxRate) / 100,
-    total = Math.round((subtotal + tax) * 100) / 100,
-    itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
-  const completeSale = () => {
-    const unavailable = cart.find(
-      (item) =>
-        item.quantity > (products.find((p) => p.id === item.id)?.stock || 0),
-    )
-    if (unavailable)
-      return setCheckoutError(
-        `${unavailable.name} has insufficient stock. Close checkout and adjust the quantity.`,
-      )
-    const sale = {
-      id: `ORD-${Date.now().toString().slice(-8)}`,
-      date: `${DEMO_DATE}T12:30:00`,
-      cashierId: user.id,
-      cashier: user.name,
-      items: cart.map((item) => ({ ...item })),
-      payment,
-      subtotal,
-      tax,
-      total,
-      status: 'Completed',
+  const effectiveTax = attempt?.request.expectedTaxRate ?? taxRate
+  const { subtotal, tax, total } = calculateTotals(cart, discount, effectiveTax)
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
+  const invalidDiscount =
+    !Number.isFinite(Number(discount || 0)) ||
+    Number(discount) < 0 ||
+    Number(discount) > subtotal ||
+    !/^\d*(\.\d{0,2})?$/.test(String(discount))
+  const unavailable = cart.some(
+    (item) =>
+      item.quantity > (products.find((p) => p.id === item.id)?.stock || 0),
+  )
+  const invalidOrder =
+    invalidDiscount || unavailable || total > maxTotal || subtotal > maxTotal
+  const completeSale = async () => {
+    try {
+      await dispatch(submitCheckout()).unwrap()
+      setCheckout(false)
+      toast('Sale completed. Inventory updated.')
+    } catch {
+      /* The slice retains the cart and displays the API error. */
     }
-    dispatch(addSale(sale))
-    dispatch(reduceStock(cart))
-    dispatch(clearCart())
-    setCheckout(false)
-    setReceipt(sale)
-    toast('Demo sale completed. Inventory and sales history updated.')
   }
   return (
     <>
@@ -112,17 +129,12 @@ export default function POSView() {
             <SearchInput
               value={query}
               onChange={(value) => setParams(value ? { q: value } : {})}
-              placeholder="Search products or enter SKU..."
+              placeholder="Search name, SKU or barcode..."
             />
             <ScanBarcode size={22} />
           </div>
           <div className="category-pills" aria-label="Product category filters">
-            {[
-              'All items',
-              ...categories
-                .filter((c) => c.status === 'Active')
-                .map((c) => c.name),
-            ].map((name) => (
+            {['All items', ...categories].map((name) => (
               <button
                 key={name}
                 className={category === name ? 'active' : ''}
@@ -137,6 +149,21 @@ export default function POSView() {
             <h2>{category}</h2>
             <span>{filtered.length} products</span>
           </div>
+          {loading && (
+            <p role="status" className="text-muted">
+              Loading products…
+            </p>
+          )}
+          {loadError && (
+            <div>
+              <p role="alert" className="form-error">
+                {loadError}
+              </p>
+              <Button variant="secondary" onClick={() => dispatch(loadPOS())}>
+                Try again
+              </Button>
+            </div>
+          )}
           <div className="product-grid">
             {filtered.map((product) => {
               const quantity =
@@ -145,7 +172,15 @@ export default function POSView() {
                 <button
                   key={product.id}
                   className={`product-card ${quantity ? 'in-cart' : ''}`}
-                  disabled={product.stock === 0 || quantity >= product.stock}
+                  disabled={
+                    locked ||
+                    !loaded ||
+                    !!loadError ||
+                    loading ||
+                    product.stock === 0 ||
+                    quantity >= Math.min(product.stock, 1000000) ||
+                    (!quantity && cart.length >= 100)
+                  }
                   onClick={() => dispatch(addItem(product))}
                   aria-label={`Add ${product.name} to order`}
                 >
@@ -173,7 +208,9 @@ export default function POSView() {
               )
             })}
           </div>
-          {!filtered.length && <EmptyState title="No products found" />}
+          {loaded && !loading && !loadError && !filtered.length && (
+            <EmptyState title="No products found" />
+          )}
         </div>
         <Card className="order-panel">
           <div className="order-heading">
@@ -183,7 +220,7 @@ export default function POSView() {
             <button
               className="icon-button"
               aria-label="Clear order"
-              disabled={!cart.length}
+              disabled={!cart.length || locked}
               onClick={() => dispatch(clearCart())}
             >
               <Trash2 size={17} />
@@ -217,6 +254,7 @@ export default function POSView() {
                       <div className="quantity-stepper">
                         <button
                           aria-label={`Decrease ${item.name}`}
+                          disabled={locked}
                           onClick={() =>
                             item.quantity === 1
                               ? dispatch(removeItem(item.id))
@@ -234,7 +272,9 @@ export default function POSView() {
                         <span>{item.quantity}</span>
                         <button
                           aria-label={`Increase ${item.name}`}
-                          disabled={item.quantity >= stock}
+                          disabled={
+                            locked || item.quantity >= Math.min(stock, 1000000)
+                          }
                           onClick={() =>
                             dispatch(
                               changeQuantity({
@@ -253,6 +293,7 @@ export default function POSView() {
                       <button
                         className="remove-item"
                         aria-label={`Remove ${item.name}`}
+                        disabled={locked}
                         onClick={() => dispatch(removeItem(item.id))}
                       >
                         <X size={13} />
@@ -270,29 +311,72 @@ export default function POSView() {
               <strong>{money(subtotal)}</strong>
             </div>
             <div>
-              <span>Tax ({settings.taxRate}%)</span>
+              <Field
+                label="Discount amount"
+                type="number"
+                min="0"
+                max={subtotal}
+                step="0.01"
+                value={discount}
+                disabled={locked}
+                onChange={(e) => dispatch(setDiscount(e.target.value))}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <span>Tax ({effectiveTax}%)</span>
               <strong>{money(tax)}</strong>
             </div>
             <div className="order-grand-total">
               <span>Total</span>
               <strong>{money(total)}</strong>
             </div>
+            {!attempt && invalidDiscount && (
+              <p role="alert" className="form-error">
+                Enter a discount between zero and the subtotal, with up to two
+                decimal places.
+              </p>
+            )}
+            {!attempt && unavailable && (
+              <p role="alert" className="form-error">
+                Some items exceed available stock. Reduce the quantity or remove
+                them.
+              </p>
+            )}
+            {!attempt && (total > maxTotal || subtotal > maxTotal) && (
+              <p role="alert" className="form-error">
+                The order exceeds the supported total of {money(maxTotal)}.
+              </p>
+            )}
             <Button
-              disabled={!cart.length}
+              disabled={
+                submitting ||
+                (!attempt &&
+                  (!cart.length ||
+                    !loaded ||
+                    !!loadError ||
+                    loading ||
+                    invalidOrder))
+              }
               onClick={() => {
-                setCheckoutError('')
                 setCheckout(true)
               }}
             >
               <CreditCard size={18} />
-              Checkout <ArrowRight size={17} />
+              {attempt ? 'Confirm pending checkout' : 'Checkout'}{' '}
+              <ArrowRight size={17} />
             </Button>
-            <p>Demo checkout · No payment will be collected</p>
+            <p>Cash or simulated Card payment</p>
           </div>
         </Card>
       </div>
-      {checkout && (
-        <Modal title="Complete your sale" onClose={() => setCheckout(false)}>
+      {(checkout || attempt) && !receipt && (
+        <Modal
+          title="Complete your sale"
+          onClose={() => {
+            if (!locked) setCheckout(false)
+          }}
+        >
           <div className="checkout-total">
             <span>Total to pay</span>
             <strong>{money(total)}</strong>
@@ -301,43 +385,68 @@ export default function POSView() {
           <p className="field-label">Payment method</p>
           <div className="payment-options">
             {[
-              ['Cash', Banknote],
-              ['Credit Card', CreditCard],
-              ['Debit Card', CreditCard],
-              ['Mobile Pay', Smartphone],
-            ].map(([name, Icon]) => (
+              ['CASH', 'Cash', Banknote],
+              ['CARD', 'Card (simulated)', CreditCard],
+            ].map(([value, name, Icon]) => (
               <button
                 key={name}
-                className={payment === name ? 'selected' : ''}
-                onClick={() => setPayment(name)}
+                className={payment === value ? 'selected' : ''}
+                disabled={locked}
+                onClick={() => dispatch(setPayment(value))}
               >
                 <Icon size={21} />
                 {name}
-                {payment === name && <Check size={14} />}
+                {payment === value && <Check size={14} />}
               </button>
             ))}
           </div>
           <p className="mock-note">
-            This records a sale in the demo workspace only. No actual payment is
-            processed.
+            {payment === 'CARD'
+              ? 'Card payment is simulated. No card details are collected and no charge is made.'
+              : 'Confirm that the cash payment has been received before completing the sale.'}
           </p>
+          {attempt && !submitting && (
+            <p role="status" className="mock-note">
+              This order is awaiting confirmation. Retry to check its result
+              without creating another sale.
+            </p>
+          )}
           {checkoutError && (
             <p role="alert" className="form-error">
               {checkoutError}
             </p>
           )}
           <div className="modal-actions">
-            <Button variant="secondary" onClick={() => setCheckout(false)}>
+            <Button
+              variant="secondary"
+              disabled={locked}
+              onClick={() => setCheckout(false)}
+            >
               Back
             </Button>
-            <Button onClick={completeSale}>
-              Complete demo sale <Check size={16} />
+            <Button
+              disabled={
+                submitting ||
+                (!attempt &&
+                  (invalidOrder || !loaded || loading || !!loadError))
+              }
+              onClick={completeSale}
+            >
+              {submitting
+                ? 'Completing…'
+                : attempt
+                  ? 'Retry checkout'
+                  : 'Complete sale'}{' '}
+              <Check size={16} />
             </Button>
           </div>
         </Modal>
       )}
       {receipt && (
-        <Modal title="Sale completed" onClose={() => setReceipt(null)}>
+        <Modal
+          title="Sale completed"
+          onClose={() => dispatch(dismissReceipt())}
+        >
           <div className="receipt-success">
             <span>
               <Check size={28} />
@@ -347,24 +456,36 @@ export default function POSView() {
           </div>
           <div className="receipt-items">
             {receipt.items.map((item) => (
-              <div key={item.id}>
+              <div key={item.productId}>
                 <span>
                   {item.name} × {item.quantity}
                 </span>
-                <strong>{money(item.price * item.quantity)}</strong>
+                <strong>{money(item.lineTotal)}</strong>
               </div>
             ))}
+            <div>
+              <span>Discount</span>
+              <strong>−{money(receipt.discount)}</strong>
+            </div>
             <div>
               <span>Tax</span>
               <strong>{money(receipt.tax)}</strong>
             </div>
             <div className="receipt-total">
-              <strong>Total · {receipt.payment}</strong>
+              <strong>
+                Total ·{' '}
+                {receipt.payment === 'CARD' ? 'Card (simulated)' : 'Cash'}
+              </strong>
               <strong>{money(receipt.total)}</strong>
             </div>
           </div>
-          <p className="mock-note text-center">{settings.receiptFooter}</p>
-          <Button className="w-full mt-5" onClick={() => setReceipt(null)}>
+          <p className="mock-note text-center">
+            Thank you for shopping fresh. See you again!
+          </p>
+          <Button
+            className="w-full mt-5"
+            onClick={() => dispatch(dismissReceipt())}
+          >
             Start a new order <ArrowRight size={16} />
           </Button>
         </Modal>

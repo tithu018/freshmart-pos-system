@@ -46,9 +46,11 @@ export default function Layout() {
           <span>© 2026 FreshMart POS. Made for a fresher everyday.</span>
           <span>
             <span className="status-dot" /> Signed in ·{' '}
-            {/\/(products|categories|inventory)\/?$/.test(location.pathname)
-              ? 'Changes are saved'
-              : 'Business data remains a demo'}
+            {/\/pos\/?$/.test(location.pathname)
+              ? 'Completed sales are saved'
+              : /\/(products|categories|inventory)\/?$/.test(location.pathname)
+                ? 'Changes are saved'
+                : 'Business data remains a demo'}
           </span>
         </footer>
       </div>

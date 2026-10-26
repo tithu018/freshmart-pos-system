@@ -39,6 +39,20 @@ public class InventoryService {
     // The row lock serializes both the quantity check and the update across app instances.
     @Transactional
     public InventoryResponse adjust(String productId, @Valid StockAdjustmentRequest request, UserResponse actor) {
+        return applyAdjustment(productId, request, actor, null);
+    }
+    // Checkout owns the surrounding sale transaction and takes locks in product-ID order.
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public InventoryResponse lockForCheckout(String productId) {
+        return InventoryResponse.from(lock(productId));
+    }
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void deductForSale(String productId, @Valid StockAdjustmentRequest request, UserResponse actor, String saleId) {
+        if (request.type() != StockOperation.STOCK_OUT || saleId == null)
+            throw new IllegalArgumentException("Sale deductions require an outgoing movement and sale ID.");
+        applyAdjustment(productId, request, actor, saleId);
+    }
+    private InventoryResponse applyAdjustment(String productId, StockAdjustmentRequest request, UserResponse actor, String saleId) {
         Inventory item = lock(productId);
         long before = item.getStock();
         long delta = request.type() == StockOperation.STOCK_OUT ? -request.quantity() : request.quantity();
@@ -46,7 +60,9 @@ public class InventoryService {
         if (after < 0) throw new CatalogException(409, "INSUFFICIENT_STOCK", "Only " + before + " units are available. Stock cannot become negative.");
         if (after > Inventory.MAX_QUANTITY) throw new CatalogException(409, "STOCK_LIMIT", "Stock cannot exceed 1,000,000,000 units.");
         item.setStock(after);
-        movements.save(new StockMovement(item, request.type().name(), request.quantity(), before, item.getMinStock(), request.reason(), actor));
+        var movement = new StockMovement(item, request.type().name(), request.quantity(), before, item.getMinStock(), request.reason(), actor);
+        movement.linkSale(saleId);
+        movements.save(movement);
         inventory.flush();
         return InventoryResponse.from(item);
     }

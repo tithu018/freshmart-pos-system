@@ -22,6 +22,7 @@ public class StockMovement {
     @Column(name = "occurred_at", nullable = false) private Instant occurredAt = Instant.now();
     @Column(name = "user_id", nullable = false, length = 36) private String userId;
     @Column(name = "user_name", nullable = false, length = 100) private String userName;
+    @Column(name = "sale_id", length = 36) private String saleId;
 
     protected StockMovement() {}
     public StockMovement(Inventory inventory, String type, long quantity, long stockBefore,
@@ -46,4 +47,6 @@ public class StockMovement {
     public Instant getOccurredAt() { return occurredAt; }
     public String getUserId() { return userId; }
     public String getUserName() { return userName; }
+    public String getSaleId() { return saleId; }
+    public void linkSale(String saleId) { this.saleId = saleId; }
 }

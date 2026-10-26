@@ -1,5 +1,8 @@
 # Task 5: Inventory Management
 
+Task 6 now integrates checkout with this inventory service; see [checkout documentation](checkout.md).
+The Task 5 implementation and verification notes below describe its original scope.
+
 Inventory now uses PostgreSQL, the existing Spring Boot API, Redux Toolkit and
 the existing Axios cookie/CSRF client. The existing Inventory page layout,
 summary cards, tables, dialogs and responsive styles are retained.

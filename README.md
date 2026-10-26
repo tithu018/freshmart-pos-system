@@ -9,6 +9,8 @@ Task 4 adds PostgreSQL-backed Products and Categories with Admin management
 and Cashier read-only access. See [catalog setup, APIs, and testing](docs/catalog.md).
 Task 5 adds persistent inventory, stock movements, thresholds and real stock alerts.
 See [inventory setup, APIs, and testing](docs/inventory.md).
+Task 6 connects POS billing to transactional checkout, sale records and inventory.
+See [checkout setup, APIs, recovery and testing](docs/checkout.md).
 
 ## Requirements
 
@@ -44,10 +46,11 @@ restrict access to the assigned role. Wrong-role routes show an access-denied pa
 
 You can search and filter tables, add/edit catalog and directory records,
 adjust inventory, export CSVs, edit your profile, and save store preferences.
-Add products to a POS order and complete a **demo sale** to update only demo stock
-and sales history. No real payment is collected. All state lives in Redux
-memory and resets on refresh, except Products, Categories and Inventory, which persist
-in PostgreSQL. Authentication persists through an HttpOnly JWT
+Add real products to a POS order and complete checkout with Cash or a simulated
+Card payment. Sale records and stock deductions persist together in PostgreSQL.
+There is no real card charge. Products, Categories, Inventory and Checkout are persistent;
+other business demos remain in Redux memory. Sales History and Reports still show demo data
+and do not yet display checkout records. Authentication persists through an HttpOnly JWT
 cookie and is restored into Redux on refresh. Mock business data uses
 October 17, 2026 as its reference date and USD as its display currency.
 
@@ -80,6 +83,7 @@ username is `freshmart`. Flyway creates the authentication user table and the
 dev profile seeds two missing users. Task 4 adds `categories` and `products`
 through a separate migration; the catalog starts empty, with no mock seed data.
 Task 5 adds one zero-stock inventory balance per product and an audit history table.
+Task 6 adds sale headers/lines and links outgoing stock movements to each sale through V4.
 
 ## Backend
 

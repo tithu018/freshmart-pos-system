@@ -40,5 +40,7 @@ unique SKU/barcode/category-name constraints and a restrictive category foreign 
 The catalog starts empty. Existing user records and migration V1 are preserved.
 Task 5 adds `inventory` (one balance per product) and `stock_movements` through V3.
 Existing products receive zero stock and a minimum threshold of 10. See
-[inventory setup and consistency](../docs/inventory.md). No POS or sales tables are created. The files in `init/`
+[inventory setup and consistency](../docs/inventory.md). Task 6 adds `sales`, `sale_items`
+and nullable `stock_movements.sale_id` through V4, preserving existing inventory records.
+See [checkout transactions and idempotency](../docs/checkout.md). The files in `init/`
 remain placeholders; do not run them as a second initialization mechanism.

@@ -1,4 +1,4 @@
-# FreshMart frontend — Tasks 2–5
+# FreshMart frontend — Tasks 2–6
 
 One responsive React application with a shared login and role-specific
 workspaces, built on the existing Vite, Redux Toolkit, and Tailwind CSS setup.
@@ -21,6 +21,7 @@ to change accounts. Refresh restores authentication, while mock business data
 resets. See [Task 3 authentication](../docs/authentication.md) for full setup.
 Products and Categories persist in PostgreSQL; see [Task 4 catalog](../docs/catalog.md).
 Inventory, stock adjustments and history also persist; see [Task 5 inventory](../docs/inventory.md).
+POS checkout and stock deductions persist atomically; see [Task 6 checkout](../docs/checkout.md).
 
 ```sh
 npm run build
@@ -74,9 +75,10 @@ authorization. Unknown paths display a recovery page.
 - Admin product/category CRUD persists through the API, with duplicate name/SKU/
   barcode validation and category deletion protection. Cashiers have read-only views.
 - Adjust actual stock and thresholds in Inventory; review immutable movement history.
-  POS quantities still use separate demo stock and do not affect real balances.
+  Checkout uses those same stock balances and records sale-linked outgoing movements.
 - Add products to the cart, adjust/remove quantities, choose a payment method,
-  and complete a mock checkout. New sales appear in history and reduce stock.
+  and complete a persistent Cash or simulated Card checkout. Inventory is reduced
+  atomically; full Sales History integration is deferred.
 - View sale details; export products, inventory, sales, and reports as CSV.
 - Add/edit customer and employee directory entries. Directory roles do not
   create login accounts or change the authenticated role.
@@ -86,9 +88,13 @@ authorization. Unknown paths display a recovery page.
 - Dashboard trend charts are explicitly marked illustrative. Reports and
   payment totals are derived from mock transactions.
 
-Product/category/inventory edits persist in PostgreSQL. Other business demos remain
-temporary and reset on refresh. POS and sales services are not connected.
-There are no real payments or Task 6 features. The Task 3 file inventory and
+Product/category/inventory edits and completed checkouts persist in PostgreSQL.
+POS uses `checkoutService.js` and the cart slice, without mock product or sales data.
+Pending checkout keys survive refresh in per-user session storage so unknown outcomes
+can be retried safely. Other business demos remain temporary. Store Settings is still
+a local preview; checkout tax comes from the backend `CHECKOUT_TAX_RATE` setting (default 0).
+There is no real payment gateway or Task 7 work. See [Task 6](../docs/checkout.md).
+The Task 3 file inventory and
 authentication details are in [docs/authentication.md](../docs/authentication.md).
 
 ## Task 2 file inventory

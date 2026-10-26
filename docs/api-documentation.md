@@ -7,4 +7,6 @@ Base URL: `http://localhost:8081/api`.
 
 - [Inventory, stock adjustments, thresholds and movement history](inventory.md)
 
-Checkout and sales APIs are not implemented.
+- [POS catalog, checkout, totals and idempotent retries](checkout.md)
+
+Full Sales History and Reports APIs are not implemented.
