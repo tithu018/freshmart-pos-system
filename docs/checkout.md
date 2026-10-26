@@ -1,5 +1,8 @@
 # Task 6: POS billing and checkout
 
+Task 7 now adds [sales history and printable receipts](sales.md) using these saved records.
+The Task 6 implementation and verification notes below describe its original scope.
+
 The existing Admin and Cashier POS pages now use actual catalog prices and inventory.
 The FreshMart layout, CSS, product cards, quantity controls and modal styles are retained.
 JWT login/logout and CSRF protection are unchanged. Only the new endpoint permissions

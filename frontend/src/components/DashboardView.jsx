@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import {
   ArrowRight,
   BarChart3,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import {
   Badge,
+  Button,
   Card,
   DataTable,
   PageHeading,
@@ -23,31 +24,44 @@ import {
   StatCard,
 } from './ui'
 import { BarChart, DonutChart, LineChart } from './Charts'
-import { DEMO_DATE, hourlySales, weeklyRevenue } from '../data/mockData'
+import { hourlySales, weeklyRevenue } from '../data/mockData'
 import { money } from '../utils/format'
 import { selectLowStock } from '../store/slices/inventorySlice'
+import { loadRecentSales } from '../store/slices/salesSlice'
+import { paymentLabel, salesPeriod } from '../utils/sales'
 
 export default function DashboardView() {
   const user = useSelector((state) => state.auth.user),
-    products = useSelector((state) => state.inventory.items),
-    allSales = useSelector((state) => state.sales.items)
+    products = useSelector((state) => state.inventory.items)
+  const {
+    recent: result,
+    recentLoading,
+    recentError,
+  } = useSelector((state) => state.sales)
+  const dispatch = useDispatch()
   const [period, setPeriod] = useState('today')
   const lowStock = useSelector(selectLowStock)
   const inventoryAvailable = useSelector(
     (state) => state.inventory.loaded && !state.inventory.error,
   )
-  const admin = user.role === 'admin',
-    sales = admin
-      ? allSales
-      : allSales.filter((sale) => sale.cashierId === user.id)
-  const recent = sales.filter(
-    (sale) => period === 'week' || sale.date.startsWith(DEMO_DATE),
-  )
-  const total = recent.reduce((sum, sale) => sum + sale.total, 0)
-  const units = recent.reduce(
-    (sum, sale) => sum + sale.items.reduce((n, item) => n + item.quantity, 0),
-    0,
-  )
+  const admin = user.role === 'admin'
+  // Keep the timezone after a pending request clears its previous response.
+  const [timeZone, setTimeZone] = useState('Asia/Colombo')
+  useEffect(() => {
+    if (result?.timeZone) setTimeZone(result.timeZone)
+  }, [result?.timeZone])
+  useEffect(() => {
+    const refresh = () =>
+      dispatch(loadRecentSales({ ...salesPeriod(period, timeZone), size: 4 }))
+    refresh()
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [dispatch, period, timeZone])
+  const salesAvailable = !!result && !recentLoading && !recentError
+  const sales = salesAvailable ? result.content : []
+  const total = result?.summary.revenue || 0,
+    units = result?.summary.units || 0,
+    orders = result?.summary.orders || 0
   const segments = admin
     ? [
         { label: 'Fresh Produce', value: 28, color: '#12b76a' },
@@ -56,9 +70,9 @@ export default function DashboardView() {
         { label: 'Bakery', value: 18, color: '#ffba45' },
         { label: 'Others', value: 14, color: '#e5eaf0' },
       ]
-    : ['Cash', 'Credit Card', 'Debit Card', 'Mobile Pay'].map((label, i) => ({
+    : ['Cash', 'Card (simulated)'].map((label, i) => ({
         label,
-        value: sales.filter((s) => s.payment === label).length,
+        value: result?.summary[i === 0 ? 'cash' : 'card'] || 0,
         color: ['#12b76a', '#34a7fa', '#8b5cf6', '#ffba45'][i],
       }))
   return (
@@ -68,7 +82,14 @@ export default function DashboardView() {
         description="Here’s what’s happening at your store today."
       >
         <span className="date-chip">
-          <CalendarDays size={15} /> Sat, Oct 17, 2026
+          <CalendarDays size={15} />{' '}
+          {new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          }).format(new Date())}
         </span>
       </PageHeading>
       <div className="welcome-strip">
@@ -90,13 +111,15 @@ export default function DashboardView() {
       <div className="stats-grid">
         <StatCard
           label={period === 'today' ? 'Today’s Sales' : 'Weekly Sales'}
-          value={money(total)}
+          value={salesAvailable ? money(total) : '—'}
           icon={ShoppingCart}
-          note={`${recent.length} completed orders`}
+          note={
+            salesAvailable ? `${orders} completed orders` : 'Sales unavailable'
+          }
         />
         <StatCard
           label="Total Orders"
-          value={recent.length}
+          value={salesAvailable ? orders : '—'}
           icon={ReceiptText}
           color="blue"
           note={
@@ -107,7 +130,15 @@ export default function DashboardView() {
         />
         <StatCard
           label={admin ? 'Total Products' : 'Items Sold'}
-          value={admin ? (inventoryAvailable ? products.length : '—') : units}
+          value={
+            admin
+              ? inventoryAvailable
+                ? products.length
+                : '—'
+              : salesAvailable
+                ? units
+                : '—'
+          }
           icon={Package}
           color="amber"
           note={admin ? 'Across all categories' : 'In the selected period'}
@@ -119,7 +150,9 @@ export default function DashboardView() {
               ? inventoryAvailable
                 ? lowStock.length
                 : '—'
-              : money(recent.length ? total / recent.length : 0)
+              : salesAvailable
+                ? money(result.summary.average)
+                : '—'
           }
           icon={admin ? TriangleAlert : CreditCard}
           color="rose"
@@ -143,13 +176,15 @@ export default function DashboardView() {
           }
         >
           <div className="chart-headline">
-            <strong>{money(total)}</strong>
+            <strong>{salesAvailable ? money(total) : '—'}</strong>
             <span className="chart-trend">
               <TrendingUp size={14} /> Overview
             </span>
           </div>
           <p className="chart-description">
-            Total revenue from {recent.length} orders
+            {salesAvailable
+              ? `Total revenue from ${orders} orders`
+              : 'Loading sales totals'}
           </p>
           <BarChart
             values={
@@ -163,12 +198,10 @@ export default function DashboardView() {
         <Card
           title="Revenue Trend"
           icon={TrendingUp}
-          action={<span className="mini-label">Last 7 days</span>}
+          action={<span className="mini-label">Selected period</span>}
         >
           <div className="chart-headline">
-            <strong>
-              {money(sales.reduce((sum, sale) => sum + sale.total, 0))}
-            </strong>
+            <strong>{salesAvailable ? money(total) : '—'}</strong>
           </div>
           <p className="chart-description">A little growth, every day</p>
           <LineChart values={weeklyRevenue} />
@@ -177,7 +210,7 @@ export default function DashboardView() {
         <Card
           title={admin ? 'Category Distribution' : 'Payment Methods'}
           icon={ChartPie}
-          action={<span className="mini-label">This week</span>}
+          action={<span className="mini-label">Selected period</span>}
         >
           <p className="chart-description chart-description-spaced">
             {admin
@@ -186,13 +219,13 @@ export default function DashboardView() {
           </p>
           <DonutChart
             segments={segments}
-            value={admin ? products.length : sales.length}
+            value={admin ? products.length : orders}
             label={admin ? 'Products' : 'Orders'}
           />
           <p className="chart-note">
             {admin
               ? 'Illustrative category share'
-              : 'Based on your demo transactions'}
+              : 'Based on your completed transactions'}
           </p>
         </Card>
       </div>
@@ -258,50 +291,82 @@ export default function DashboardView() {
             </Link>
           }
         >
-          <DataTable
-            caption="Recent transactions"
-            pageSize={4}
-            data={sales.slice(0, 4)}
-            columns={[
-              {
-                key: 'id',
-                label: 'Order ID',
-                render: (s) => (
-                  <span className="font-medium">#{s.id.slice(4)}</span>
-                ),
-              },
-              ...(admin
-                ? [{ key: 'cashier', label: 'Cashier' }]
-                : [
-                    {
-                      key: 'items',
-                      label: 'Items',
-                      render: (s) =>
-                        s.items.reduce((sum, item) => sum + item.quantity, 0),
-                    },
-                  ]),
-              {
-                key: 'payment',
-                label: 'Payment',
-                render: (s) => (
-                  <span className="payment-label">
-                    <CreditCard size={13} />
-                    {s.payment}
-                  </span>
-                ),
-              },
-              {
-                key: 'total',
-                label: 'Amount',
-                render: (s) => <strong>{money(s.total)}</strong>,
-              },
-              {
-                key: 'status',
-                label: 'Status',
-                render: (s) => <Badge>{s.status}</Badge>,
-              },
-            ]}
-          />
+          {recentLoading && (
+            <p role="status" className="p-4 text-muted">
+              Loading recent sales…
+            </p>
+          )}
+          {recentError && (
+            <div className="p-4">
+              <p role="alert" className="form-error">
+                {recentError}
+              </p>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  dispatch(
+                    loadRecentSales({
+                      ...salesPeriod(period, timeZone),
+                      size: 4,
+                    }),
+                  )
+                }
+              >
+                Retry recent sales
+              </Button>
+            </div>
+          )}
+          {salesAvailable && (
+            <DataTable
+              caption="Recent transactions"
+              pageSize={4}
+              data={sales.slice(0, 4)}
+              columns={[
+                {
+                  key: 'id',
+                  label: 'Order ID',
+                  render: (s) => (
+                    <Link
+                      className="order-id"
+                      to={`/${user.role}/${admin ? 'sales' : 'sales-history'}?sale=${encodeURIComponent(s.id)}`}
+                      title={s.id}
+                    >
+                      {s.id.slice(0, 8)}…
+                    </Link>
+                  ),
+                },
+                ...(admin
+                  ? [{ key: 'userName', label: 'Cashier' }]
+                  : [
+                      {
+                        key: 'items',
+                        label: 'Items',
+                        render: (s) => s.quantity,
+                      },
+                    ]),
+                {
+                  key: 'payment',
+                  label: 'Payment',
+                  render: (s) => (
+                    <span className="payment-label">
+                      <CreditCard size={13} />
+                      {paymentLabel(s.payment)}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'total',
+                  label: 'Amount',
+                  render: (s) => <strong>{money(s.total)}</strong>,
+                },
+                {
+                  key: 'status',
+                  label: 'Status',
+                  render: () => <Badge>Completed</Badge>,
+                },
+              ]}
+            />
+          )}
         </Card>
       </div>
       <div className="dashboard-note">

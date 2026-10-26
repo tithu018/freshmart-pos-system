@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowRight,
   Banknote,
@@ -482,6 +482,14 @@ export default function POSView() {
           <p className="mock-note text-center">
             Thank you for shopping fresh. See you again!
           </p>
+          <Link
+            className="btn btn-secondary w-full mt-5"
+            target="_blank"
+            rel="noopener noreferrer"
+            to={`/${user.role}/receipts/${encodeURIComponent(receipt.id)}`}
+          >
+            Print Receipt
+          </Link>
           <Button
             className="w-full mt-5"
             onClick={() => dispatch(dismissReceipt())}

@@ -44,3 +44,6 @@ Existing products receive zero stock and a minimum threshold of 10. See
 and nullable `stock_movements.sale_id` through V4, preserving existing inventory records.
 See [checkout transactions and idempotency](../docs/checkout.md). The files in `init/`
 remain placeholders; do not run them as a second initialization mechanism.
+
+Task 7 adds only sales query indexes through `V5__sales_history_indexes.sql`.
+It reuses existing sales and sale items without copying, reseeding or rewriting them.

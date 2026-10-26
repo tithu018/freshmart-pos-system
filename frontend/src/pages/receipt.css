@@ -1,0 +1,180 @@
+.receipt-page {
+  min-height: 100vh;
+  padding: 24px 12px;
+  background: #f5f8f7;
+  color: #172e25;
+}
+.receipt-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+.receipt-page > p,
+.receipt-error {
+  text-align: center;
+}
+.receipt-paper {
+  width: 80mm;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 6mm;
+  background: white;
+  border: 1px solid #dfe8e3;
+  font:
+    12px/1.5 Arial,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+.receipt-paper header {
+  text-align: center;
+  border-bottom: 2px solid #128348;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.receipt-paper h1 {
+  color: #078646;
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0;
+}
+.receipt-paper header p {
+  margin-top: 4px;
+  letter-spacing: 2px;
+  font-size: 10px;
+}
+.receipt-meta {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 5px 8px;
+  margin-bottom: 14px;
+}
+.receipt-meta dt {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.receipt-meta small,
+.receipt-lines small {
+  display: block;
+  font-size: 9px;
+  color: #52635a;
+}
+.receipt-lines {
+  white-space: normal;
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.receipt-lines th:first-child,
+.receipt-lines td:first-child {
+  padding-left: 2px;
+}
+.receipt-lines th:last-child,
+.receipt-lines td:last-child {
+  padding-right: 2px;
+}
+.receipt-lines th {
+  background: transparent;
+  color: inherit;
+  font-size: 10px;
+  padding: 6px 2px;
+  border-top: 1px dashed #788b80;
+  border-bottom: 1px dashed #788b80;
+}
+.receipt-lines td {
+  color: #172e25;
+  padding: 8px 2px;
+  font-size: 11px;
+  border-bottom: 1px solid #e4e9e6;
+  vertical-align: top;
+}
+.receipt-lines th:first-child {
+  width: 42%;
+  text-align: left;
+}
+.receipt-lines th:nth-child(2) {
+  width: 12%;
+}
+.receipt-lines th:nth-child(3) {
+  width: 22%;
+}
+.receipt-lines th:nth-child(4) {
+  width: 24%;
+}
+.receipt-lines th:not(:first-child),
+.receipt-lines td:not(:first-child) {
+  text-align: right;
+}
+.receipt-sums {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  margin-top: 14px;
+}
+.receipt-sums dd {
+  text-align: right;
+}
+.receipt-sums .grand {
+  border-top: 2px solid #172e25;
+  padding-top: 8px;
+  margin-top: 4px;
+  font-size: 17px;
+  font-weight: 800;
+}
+.receipt-paper footer {
+  text-align: center;
+  border-top: 1px dashed #788b80;
+  margin-top: 18px;
+  padding-top: 12px;
+  font-size: 10px;
+}
+.receipt-paper footer p {
+  margin: 6px 0;
+}
+@page freshmart-receipt {
+  size: auto;
+  margin: 8mm;
+}
+@media print {
+  html:has(.receipt-page),
+  body:has(.receipt-page),
+  .receipt-page {
+    background: white;
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    min-width: 0;
+    color: black;
+  }
+  .receipt-controls,
+  .receipt-error,
+  .receipt-page > [role='status'],
+  body:has(.receipt-page) .toast {
+    display: none !important;
+  }
+  .receipt-paper {
+    page: freshmart-receipt;
+    border: none;
+    padding: 0;
+    margin: 0 auto;
+    color: black;
+  }
+  .receipt-paper h1,
+  .receipt-paper small,
+  .receipt-lines td {
+    color: black;
+  }
+  .receipt-paper header {
+    border-color: black;
+  }
+  .receipt-lines thead {
+    display: table-header-group;
+  }
+  .receipt-lines tr,
+  .receipt-sums,
+  .receipt-paper footer {
+    break-inside: avoid;
+  }
+}

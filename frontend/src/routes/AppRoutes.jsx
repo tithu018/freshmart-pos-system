@@ -18,6 +18,7 @@ import CashierPOS from '../pages/cashier/POS'
 import SalesHistory from '../pages/cashier/SalesHistory'
 import CashierProfile from '../pages/cashier/Profile'
 import { EmptyState } from '../components/ui'
+import Receipt from '../pages/Receipt'
 
 // UI routing follows the verified server session; API permissions are enforced in Spring Security.
 function RoleGuard({ role }) {
@@ -72,6 +73,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route element={<RoleGuard role="admin" />}>
+        <Route path="/admin/receipts/:id" element={<Receipt />} />
         <Route path="/admin" element={<Layout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
@@ -89,6 +91,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
       <Route element={<RoleGuard role="cashier" />}>
+        <Route path="/cashier/receipts/:id" element={<Receipt />} />
         <Route path="/cashier" element={<Layout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<CashierDashboard />} />

@@ -1,4 +1,4 @@
-# FreshMart frontend — Tasks 2–6
+# FreshMart frontend — Tasks 2–7
 
 One responsive React application with a shared login and role-specific
 workspaces, built on the existing Vite, Redux Toolkit, and Tailwind CSS setup.
@@ -22,6 +22,8 @@ resets. See [Task 3 authentication](../docs/authentication.md) for full setup.
 Products and Categories persist in PostgreSQL; see [Task 4 catalog](../docs/catalog.md).
 Inventory, stock adjustments and history also persist; see [Task 5 inventory](../docs/inventory.md).
 POS checkout and stock deductions persist atomically; see [Task 6 checkout](../docs/checkout.md).
+Sales history, details, recent transactions and printable receipts use those records;
+see [Task 7 sales](../docs/sales.md).
 
 ```sh
 npm run build
@@ -53,12 +55,15 @@ authorization. Unknown paths display a recovery page.
 - `src/pages/`: all Admin, Cashier, and login route components. Shared POS,
   dashboard, profile, sales, and directory views avoid duplicated UI.
 - `src/routes/AppRoutes.jsx`: single React Router tree and role guards.
+  Standalone `/admin/receipts/:id` and `/cashier/receipts/:id` pages use the same guards
+  and fetch authorized sale snapshots before allowing printing.
 - `src/data/mockData.js`: catalog, categories, people, transactions, and chart
   fixtures. The reference date is October 17, 2026; prices use USD.
 - `src/store/slices/`: authenticated user, catalog/categories, cart, sales,
   and management/settings state. `catalogSlice.js` holds API Products/Categories;
   `inventorySlice.js` holds real stock, thresholds, movements and alert selectors.
-  The Task 2 product mock slice remains isolated to the POS demo.
+  `salesSlice.js` holds server-paginated history, recent sales, details and cashier options.
+  The old product mock slice is not used by POS or sales history.
 - `src/services/`: credentialed API requests, CSRF handshake, auth service, and
   Axios product/category services. Login and logout retain their existing client.
 - `src/components/AuthSession.jsx`: refresh restoration and expiry handling.
@@ -78,22 +83,27 @@ authorization. Unknown paths display a recovery page.
   Checkout uses those same stock balances and records sale-linked outgoing movements.
 - Add products to the cart, adjust/remove quantities, choose a payment method,
   and complete a persistent Cash or simulated Card checkout. Inventory is reduced
-  atomically; full Sales History integration is deferred.
-- View sale details; export products, inventory, sales, and reports as CSV.
+  atomically. View the saved transaction in Sales/Sales History or print its receipt.
+- Search Sale ID, filter dates/payment/cashier, sort and paginate on the server.
+  Cashiers see only their own sales. Export the current sales page as CSV; product,
+  inventory and report exports retain their existing behavior.
 - Add/edit customer and employee directory entries. Directory roles do not
   create login accounts or change the authenticated role.
 - Preview name/phone edits locally (account email/ID/role stay read-only).
   Update mock store details, tax percentage, receipt footer,
   and low-stock notification preference for the current in-memory session.
-- Dashboard trend charts are explicitly marked illustrative. Reports and
-  payment totals are derived from mock transactions.
+- Dashboard trend charts remain explicitly illustrative. Recent transactions, sales
+  summary cards and Cashier payment totals use actual sales; the Reports demo still
+  uses its original mock transactions and is not a full reporting implementation.
 
 Product/category/inventory edits and completed checkouts persist in PostgreSQL.
 POS uses `checkoutService.js` and the cart slice, without mock product or sales data.
 Pending checkout keys survive refresh in per-user session storage so unknown outcomes
 can be retried safely. Other business demos remain temporary. Store Settings is still
 a local preview; checkout tax comes from the backend `CHECKOUT_TAX_RATE` setting (default 0).
-There is no real payment gateway or Task 7 work. See [Task 6](../docs/checkout.md).
+Receipt branding and dates come from backend `STORE_NAME` and `STORE_TIME_ZONE`;
+the local demo Settings page does not override printed receipts.
+There is no real payment gateway, refund implementation or Task 8 work.
 The Task 3 file inventory and
 authentication details are in [docs/authentication.md](../docs/authentication.md).
 

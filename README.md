@@ -11,6 +11,8 @@ Task 5 adds persistent inventory, stock movements, thresholds and real stock ale
 See [inventory setup, APIs, and testing](docs/inventory.md).
 Task 6 connects POS billing to transactional checkout, sale records and inventory.
 See [checkout setup, APIs, recovery and testing](docs/checkout.md).
+Task 7 adds real sales history, ownership checks, recent transactions and printable receipts.
+See [sales history, receipts and testing](docs/sales.md).
 
 ## Requirements
 
@@ -41,7 +43,7 @@ See [authentication setup and testing](docs/authentication.md) for details.
 Admin pages: Dashboard, Point of Sale, Products, Categories, Inventory, Sales,
 Customers, Employees, Reports, Settings, and My Profile. Cashier pages:
 Dashboard, Products, Categories, Inventory, Point of Sale, Sales History, and My Profile. Cashier sales history
-shows only that cashier's mock transactions. Both the frontend and backend
+shows only that cashier's saved transactions. Both the frontend and backend
 restrict access to the assigned role. Wrong-role routes show an access-denied page.
 
 You can search and filter tables, add/edit catalog and directory records,
@@ -49,8 +51,9 @@ adjust inventory, export CSVs, edit your profile, and save store preferences.
 Add real products to a POS order and complete checkout with Cash or a simulated
 Card payment. Sale records and stock deductions persist together in PostgreSQL.
 There is no real card charge. Products, Categories, Inventory and Checkout are persistent;
-other business demos remain in Redux memory. Sales History and Reports still show demo data
-and do not yet display checkout records. Authentication persists through an HttpOnly JWT
+Sales History and recent dashboard transactions read those same checkout records.
+Receipts can be viewed and printed by Admin or the sale's Cashier. Reports and other
+unfinished business demos remain isolated to mock data. Authentication persists through an HttpOnly JWT
 cookie and is restored into Redux on refresh. Mock business data uses
 October 17, 2026 as its reference date and USD as its display currency.
 

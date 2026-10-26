@@ -9,4 +9,6 @@ Base URL: `http://localhost:8081/api`.
 
 - [POS catalog, checkout, totals and idempotent retries](checkout.md)
 
-Full Sales History and Reports APIs are not implemented.
+- [Sales pagination, filters, ownership and printable receipts](sales.md)
+
+Full Reports APIs are not implemented.

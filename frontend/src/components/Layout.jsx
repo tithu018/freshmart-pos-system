@@ -48,7 +48,9 @@ export default function Layout() {
             <span className="status-dot" /> Signed in ·{' '}
             {/\/pos\/?$/.test(location.pathname)
               ? 'Completed sales are saved'
-              : /\/(products|categories|inventory)\/?$/.test(location.pathname)
+              : /\/(products|categories|inventory|sales|sales-history)\/?$/.test(
+                    location.pathname,
+                  )
                 ? 'Changes are saved'
                 : 'Business data remains a demo'}
           </span>

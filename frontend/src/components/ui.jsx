@@ -241,10 +241,18 @@ export function DataTable({
   pageSize = 7,
   emptyTitle,
   caption = 'Records',
+  pagination,
 }) {
   const [page, setPage] = useState(1)
-  const pages = Math.max(1, Math.ceil(data.length / pageSize))
-  const current = Math.min(page, pages)
+  const limit = pagination?.size || pageSize
+  const total = pagination?.totalElements ?? data.length
+  const pages = Math.max(1, Math.ceil(total / limit))
+  const current = Math.min(pagination ? pagination.page + 1 : page, pages)
+  const changePage = (next) =>
+    pagination ? pagination.onPageChange(next - 1) : setPage(next)
+  const visible = pagination
+    ? data
+    : data.slice((current - 1) * limit, current * limit)
   useEffect(() => {
     setPage(1)
   }, [data])
@@ -263,17 +271,15 @@ export function DataTable({
             </tr>
           </thead>
           <tbody>
-            {data
-              .slice((current - 1) * pageSize, current * pageSize)
-              .map((row) => (
-                <tr key={row.id}>
-                  {columns.map((column) => (
-                    <td key={column.key} className={column.className}>
-                      {column.render ? column.render(row) : row[column.key]}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+            {visible.map((row) => (
+              <tr key={row.id}>
+                {columns.map((column) => (
+                  <td key={column.key} className={column.className}>
+                    {column.render ? column.render(row) : row[column.key]}
+                  </td>
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -282,21 +288,22 @@ export function DataTable({
         <span>
           Showing{' '}
           <strong>
-            {data.length ? (current - 1) * pageSize + 1 : 0}–
-            {Math.min(current * pageSize, data.length)}
+            {data.length ? (current - 1) * limit + 1 : 0}–
+            {data.length ? Math.min(current * limit, total) : 0}
           </strong>{' '}
-          of <strong>{data.length}</strong> results
+          of <strong>{total}</strong> results
         </span>
         <div className="pagination">
           <button
             aria-label="Previous page"
             disabled={current === 1}
-            onClick={() => setPage(current - 1)}
+            onClick={() => changePage(current - 1)}
           >
             <ChevronLeft size={15} />
           </button>
-          {Array.from({ length: pages }, (_, i) => i + 1)
-            .filter((n) => n === 1 || n === pages || Math.abs(current - n) <= 1)
+          {[...new Set([1, pages, current - 1, current, current + 1])]
+            .filter((n) => n >= 1 && n <= pages)
+            .sort((a, b) => a - b)
             .map((n, i, list) => (
               <span key={n} className="contents">
                 {i > 0 && n - list[i - 1] > 1 && (
@@ -306,7 +313,7 @@ export function DataTable({
                   aria-label={`Page ${n}`}
                   aria-current={n === current ? 'page' : undefined}
                   className={n === current ? 'active' : ''}
-                  onClick={() => setPage(n)}
+                  onClick={() => changePage(n)}
                 >
                   {n}
                 </button>
@@ -315,7 +322,7 @@ export function DataTable({
           <button
             aria-label="Next page"
             disabled={current === pages}
-            onClick={() => setPage(current + 1)}
+            onClick={() => changePage(current + 1)}
           >
             <ChevronRight size={15} />
           </button>

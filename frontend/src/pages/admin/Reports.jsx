@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useSelector } from 'react-redux'
 import {
   BarChart3,
   CreditCard,
@@ -18,10 +17,10 @@ import {
 } from '../../components/ui'
 import { BarChart, DonutChart } from '../../components/Charts'
 import { downloadCsv, money } from '../../utils/format'
-import { DEMO_DATE } from '../../data/mockData'
+import { DEMO_DATE, sales as demoSales } from '../../data/mockData'
 
 export default function Reports() {
-  const allSales = useSelector((state) => state.sales.items),
+  const allSales = demoSales,
     [period, setPeriod] = useState('week')
   const sales = useMemo(
     () =>
