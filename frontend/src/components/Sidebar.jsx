@@ -22,6 +22,7 @@ import { useSelector } from 'react-redux'
 import useLogout from '../hooks/useLogout'
 import Brand from './Brand'
 import { Avatar, useToast } from './ui'
+import { selectLowStock } from '../store/slices/inventorySlice'
 
 export const adminLinks = [
   ['dashboard', 'Dashboard', LayoutDashboard],
@@ -38,6 +39,7 @@ export const adminLinks = [
 ]
 export const cashierLinks = [
   ['dashboard', 'Dashboard', LayoutDashboard],
+  ['inventory', 'Inventory', Boxes],
   ['products', 'Products', Package],
   ['categories', 'Categories', Grid2X2],
   ['pos', 'Point of Sale', ShoppingCart],
@@ -80,10 +82,11 @@ export default function Sidebar({ open, onClose, mobile }) {
     }
   }, [open, mobile])
   const user = useSelector((state) => state.auth.user)
-  const lowStock = useSelector(
-    (state) =>
-      state.products.items.filter((item) => item.stock < item.minStock).length,
+  const lowStockItems = useSelector(selectLowStock)
+  const inventoryAvailable = useSelector(
+    (state) => state.inventory.loaded && !state.inventory.error,
   )
+  const lowStock = inventoryAvailable ? lowStockItems.length : 0
   const toast = useToast()
   const links = user.role === 'admin' ? adminLinks : cashierLinks
   return (

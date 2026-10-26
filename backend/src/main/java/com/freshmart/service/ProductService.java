@@ -3,6 +3,7 @@ package com.freshmart.service;
 import com.freshmart.dto.*;
 import com.freshmart.model.*;
 import com.freshmart.repository.ProductRepository;
+import com.freshmart.repository.InventoryRepository;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,8 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductService {
     private final ProductRepository products;
     private final CategoryService categories;
-    public ProductService(ProductRepository products, CategoryService categories) {
-        this.products = products; this.categories = categories;
+    private final InventoryRepository inventory;
+    public ProductService(ProductRepository products, CategoryService categories, InventoryRepository inventory) {
+        this.products = products; this.categories = categories; this.inventory = inventory;
     }
     public List<ProductResponse> list(String query, String categoryId, CatalogStatus status) {
         String term = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
@@ -47,8 +49,20 @@ public class ProductService {
         if (request.barcode() != null && products.existsByBarcodeAndIdNot(request.barcode(), product.getId()))
             throw new CatalogException(409, "DUPLICATE_BARCODE", "A product with this barcode already exists.");
         product.update(request, categories.require(request.categoryId()));
-        return ProductResponse.from(products.saveAndFlush(product));
+        Product saved = products.saveAndFlush(product);
+        if (id == null) inventory.saveAndFlush(new Inventory(saved));
+        return ProductResponse.from(saved);
     }
     @Transactional
-    public void delete(String id) { products.delete(require(id)); products.flush(); }
+    public void delete(String id) {
+        Product product = require(id);
+        var stock = inventory.lockByProductId(id);
+        if (stock.isPresent() && stock.get().getStock() > 0)
+            throw new CatalogException(409, "PRODUCT_HAS_STOCK", "Remove the remaining stock before deleting this product.");
+        // Remove the managed @MapsId child before its parent so Hibernate cannot
+        // re-persist the product through the inventory association during flush.
+        stock.ifPresent(inventory::delete);
+        inventory.flush();
+        products.delete(product); products.flush();
+    }
 }

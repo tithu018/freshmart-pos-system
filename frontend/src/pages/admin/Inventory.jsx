@@ -5,36 +5,58 @@ import {
   ArrowDownUp,
   Boxes,
   Download,
+  History,
   PackageCheck,
+  Settings2,
   TriangleAlert,
 } from 'lucide-react'
-import { adjustStock } from '../../store/slices/productSlice'
+import {
+  loadInventory,
+  selectInventorySummary,
+} from '../../store/slices/inventorySlice'
 import {
   Badge,
   Button,
   Card,
   DataTable,
-  Field,
-  Modal,
   PageHeading,
   ProductName,
   SearchInput,
   StatCard,
-  useToast,
 } from '../../components/ui'
+import StockAdjustmentForm from '../../components/StockAdjustmentForm'
+import StockHistory from '../../components/StockHistory'
 import { downloadCsv, money, stockStatus } from '../../utils/format'
 
 export default function Inventory() {
-  const products = useSelector((state) => state.products.items),
-    categories = useSelector((state) => state.products.categories)
+  const {
+    items: products,
+    loading,
+    loaded,
+    error,
+    saving,
+  } = useSelector((state) => state.inventory)
+  const summary = useSelector(selectInventorySummary)
+  const admin = useSelector((state) => state.auth.user?.role === 'admin')
+  const dispatch = useDispatch()
   const [params, setParams] = useSearchParams(),
     query = params.get('q') || '',
     status = params.get('status') || 'All stock'
-  const [category, setCategory] = useState('All categories'),
+  const [category, setCategory] = useState(''),
     [editing, setEditing] = useState(null),
-    [stock, setStock] = useState(0)
-  const dispatch = useDispatch(),
-    toast = useToast()
+    [history, setHistory] = useState(undefined)
+  const categories = useMemo(
+    () =>
+      [
+        ...new Map(
+          products.map((p) => [
+            p.categoryId,
+            { id: p.categoryId, name: p.category },
+          ]),
+        ).values(),
+      ].sort((a, b) => a.name.localeCompare(b.name)),
+    [products],
+  )
   const filterParam = (key, value) => {
     const next = new URLSearchParams(params)
     value ? next.set(key, value) : next.delete(key)
@@ -44,29 +66,47 @@ export default function Inventory() {
     () =>
       products.filter(
         (p) =>
-          `${p.name} ${p.sku}`.toLowerCase().includes(query.toLowerCase()) &&
-          (category === 'All categories' || p.category === category) &&
+          `${p.name} ${p.sku} ${p.barcode || ''}`
+            .toLowerCase()
+            .includes(query.toLowerCase()) &&
+          (!category || p.categoryId === category) &&
           (status === 'All stock' ||
-            (status === 'Low Stock'
-              ? p.stock < p.minStock
+            (status === 'Needs Attention'
+              ? p.stock === 0 || p.stock < p.minStock
               : stockStatus(p) === status)),
       ),
     [products, query, category, status],
   )
+  const unavailable = !loaded || !!error
   return (
     <>
       <PageHeading
         title="Inventory"
         description="Healthy shelves. Happy customers. Stay one step ahead."
       >
+        {admin && (
+          <Button variant="secondary" onClick={() => setHistory(null)}>
+            <History size={16} />
+            Stock history
+          </Button>
+        )}
         <Button
           variant="secondary"
+          disabled={unavailable || loading}
           onClick={() =>
             downloadCsv('freshmart-inventory.csv', [
-              ['Product', 'SKU', 'Current stock', 'Minimum stock', 'Status'],
+              [
+                'Product',
+                'SKU',
+                'Category',
+                'Current stock',
+                'Minimum stock',
+                'Status',
+              ],
               ...filtered.map((p) => [
                 p.name,
                 p.sku,
+                p.category,
                 p.stock,
                 p.minStock,
                 stockStatus(p),
@@ -81,23 +121,27 @@ export default function Inventory() {
       <div className="stats-grid stats-three">
         <StatCard
           label="Units in Stock"
-          value={products.reduce((sum, p) => sum + p.stock, 0)}
+          value={unavailable ? '—' : summary.units}
           icon={Boxes}
           note="Across your entire store"
         />
         <StatCard
           label="Inventory Value"
-          value={money(products.reduce((sum, p) => sum + p.stock * p.price, 0))}
+          value={unavailable ? '—' : money(summary.value)}
           icon={PackageCheck}
           color="blue"
           note="At current selling prices"
         />
         <StatCard
           label="Needs Attention"
-          value={products.filter((p) => p.stock < p.minStock).length}
+          value={unavailable ? '—' : summary.lowStock + summary.outOfStock}
           icon={TriangleAlert}
           color="amber"
-          note="Below the minimum stock level"
+          note={
+            unavailable
+              ? 'Stock levels unavailable'
+              : `${summary.lowStock} low stock · ${summary.outOfStock} out of stock`
+          }
         />
       </div>
       <Card>
@@ -113,9 +157,11 @@ export default function Inventory() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
-              <option>All categories</option>
+              <option value="">All categories</option>
               {categories.map((c) => (
-                <option key={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
               ))}
             </select>
             <select
@@ -123,92 +169,115 @@ export default function Inventory() {
               value={status}
               onChange={(e) => filterParam('status', e.target.value)}
             >
-              {['All stock', 'In Stock', 'Low Stock', 'Out of Stock'].map(
-                (s) => (
-                  <option key={s}>{s}</option>
-                ),
-              )}
+              {[
+                'All stock',
+                'In Stock',
+                'Low Stock',
+                'Out of Stock',
+                'Needs Attention',
+              ].map((s) => (
+                <option key={s}>{s}</option>
+              ))}
             </select>
           </div>
         </div>
-        <DataTable
-          data={filtered}
-          caption="Inventory levels"
-          columns={[
-            {
-              key: 'name',
-              label: 'Product',
-              render: (p) => <ProductName product={p} detail />,
-            },
-            { key: 'category', label: 'Category' },
-            {
-              key: 'stock',
-              label: 'Current Stock',
-              render: (p) => (
-                <strong className={p.stock < p.minStock ? 'text-rose-500' : ''}>
-                  {p.stock}
-                </strong>
-              ),
-            },
-            { key: 'minStock', label: 'Min. Stock' },
-            {
-              key: 'status',
-              label: 'Status',
-              render: (p) => <Badge>{stockStatus(p)}</Badge>,
-            },
-            {
-              key: 'actions',
-              label: 'Actions',
-              render: (p) => (
-                <button
-                  className="text-link"
-                  onClick={() => {
-                    setEditing(p)
-                    setStock(p.stock)
-                  }}
-                >
-                  <ArrowDownUp size={14} /> Adjust
-                </button>
-              ),
-            },
-          ]}
-        />
-      </Card>
-      {editing && (
-        <Modal title="Adjust stock" onClose={() => setEditing(null)}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              dispatch(adjustStock({ id: editing.id, stock: Number(stock) }))
-              toast(`Stock updated for ${editing.name}.`)
-              setEditing(null)
-            }}
-          >
-            <ProductName product={editing} detail />
-            <p className="form-intro mt-5">
-              Enter the total quantity currently on your shelves.
+        {loading || (!loaded && !error) ? (
+          <p role="status" className="p-4 text-muted">
+            Loading inventory…
+          </p>
+        ) : error ? (
+          <div className="p-4">
+            <p role="alert" className="form-error">
+              {error}
             </p>
-            <Field
-              label="New stock quantity"
-              type="number"
-              min="0"
-              step="1"
-              required
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
-            />
-            <div className="modal-actions">
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={() => setEditing(null)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">Update stock</Button>
-            </div>
-          </form>
-        </Modal>
+            <Button
+              variant="secondary"
+              onClick={() => dispatch(loadInventory())}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <DataTable
+            data={filtered}
+            caption="Inventory levels"
+            emptyTitle={
+              products.length ? 'No results found' : 'No products yet'
+            }
+            columns={[
+              {
+                key: 'name',
+                label: 'Product',
+                render: (p) => <ProductName product={p} detail />,
+              },
+              { key: 'category', label: 'Category' },
+              {
+                key: 'stock',
+                label: 'Current Stock',
+                render: (p) => (
+                  <strong
+                    className={
+                      p.stock === 0 || p.stock < p.minStock
+                        ? 'text-rose-500'
+                        : ''
+                    }
+                  >
+                    {p.stock}
+                  </strong>
+                ),
+              },
+              { key: 'minStock', label: 'Min. Stock' },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (p) => <Badge>{stockStatus(p)}</Badge>,
+              },
+              ...(admin
+                ? [
+                    {
+                      key: 'actions',
+                      label: 'Actions',
+                      render: (p) => (
+                        <>
+                          <button
+                            className="text-link"
+                            disabled={saving}
+                            aria-label={`Adjust ${p.name}`}
+                            onClick={() => setEditing({ product: p })}
+                          >
+                            <ArrowDownUp size={14} /> Adjust
+                          </button>
+                          <button
+                            className="icon-button"
+                            disabled={saving}
+                            aria-label={`Threshold for ${p.name}`}
+                            onClick={() =>
+                              setEditing({ product: p, threshold: true })
+                            }
+                          >
+                            <Settings2 size={15} />
+                          </button>
+                          <button
+                            className="icon-button"
+                            aria-label={`History for ${p.name}`}
+                            onClick={() => setHistory(p)}
+                          >
+                            <History size={15} />
+                          </button>
+                        </>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        )}
+      </Card>
+      {admin && editing && (
+        <StockAdjustmentForm {...editing} onClose={() => setEditing(null)} />
+      )}
+      {admin && history !== undefined && (
+        <StockHistory product={history} onClose={() => setHistory(undefined)} />
       )}
     </>
   )

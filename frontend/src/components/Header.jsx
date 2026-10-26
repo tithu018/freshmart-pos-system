@@ -12,13 +12,16 @@ import { useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { Avatar } from './ui'
 import useLogout from '../hooks/useLogout'
+import { selectLowStock } from '../store/slices/inventorySlice'
 
 export default function Header({ onMenu }) {
   const { signOut, pending } = useLogout()
   const user = useSelector((state) => state.auth.user)
-  const lowStockCount = useSelector(
-    (state) => state.products.items.filter((p) => p.stock < p.minStock).length,
+  const lowStockItems = useSelector(selectLowStock)
+  const inventoryAvailable = useSelector(
+    (state) => state.inventory.loaded && !state.inventory.error,
   )
+  const lowStockCount = inventoryAvailable ? lowStockItems.length : 0
   const alerts = useSelector(
     (state) => state.management.settings.lowStockAlerts,
   )
@@ -103,14 +106,18 @@ export default function Header({ onMenu }) {
                     </div>
                   </div>
                   <Link
-                    to={`/${user.role}/${user.role === 'admin' ? 'inventory?status=Low%20Stock' : 'pos'}`}
+                    to={`/${user.role}/inventory?status=Needs%20Attention`}
                     onClick={() => setPanel(null)}
                   >
-                    View {user.role === 'admin' ? 'inventory' : 'products'} →
+                    View inventory →
                   </Link>
                 </>
               ) : (
-                <p className="p-4 text-muted">You’re all caught up.</p>
+                <p className="p-4 text-muted">
+                  {inventoryAvailable
+                    ? 'You’re all caught up.'
+                    : 'Stock alerts are unavailable. Open Inventory to retry.'}
+                </p>
               )}
             </div>
           )}

@@ -25,12 +25,17 @@ import {
 import { BarChart, DonutChart, LineChart } from './Charts'
 import { DEMO_DATE, hourlySales, weeklyRevenue } from '../data/mockData'
 import { money } from '../utils/format'
+import { selectLowStock } from '../store/slices/inventorySlice'
 
 export default function DashboardView() {
   const user = useSelector((state) => state.auth.user),
-    products = useSelector((state) => state.products.items),
+    products = useSelector((state) => state.inventory.items),
     allSales = useSelector((state) => state.sales.items)
   const [period, setPeriod] = useState('today')
+  const lowStock = useSelector(selectLowStock)
+  const inventoryAvailable = useSelector(
+    (state) => state.inventory.loaded && !state.inventory.error,
+  )
   const admin = user.role === 'admin',
     sales = admin
       ? allSales
@@ -38,8 +43,7 @@ export default function DashboardView() {
   const recent = sales.filter(
     (sale) => period === 'week' || sale.date.startsWith(DEMO_DATE),
   )
-  const total = recent.reduce((sum, sale) => sum + sale.total, 0),
-    lowStock = products.filter((p) => p.stock < p.minStock)
+  const total = recent.reduce((sum, sale) => sum + sale.total, 0)
   const units = recent.reduce(
     (sum, sale) => sum + sale.items.reduce((n, item) => n + item.quantity, 0),
     0,
@@ -103,7 +107,7 @@ export default function DashboardView() {
         />
         <StatCard
           label={admin ? 'Total Products' : 'Items Sold'}
-          value={admin ? products.length : units}
+          value={admin ? (inventoryAvailable ? products.length : '—') : units}
           icon={Package}
           color="amber"
           note={admin ? 'Across all categories' : 'In the selected period'}
@@ -112,7 +116,9 @@ export default function DashboardView() {
           label={admin ? 'Low Stock Items' : 'Average Order'}
           value={
             admin
-              ? lowStock.length
+              ? inventoryAvailable
+                ? lowStock.length
+                : '—'
               : money(recent.length ? total / recent.length : 0)
           }
           icon={admin ? TriangleAlert : CreditCard}
@@ -198,7 +204,7 @@ export default function DashboardView() {
             action={
               <Link
                 className="text-link"
-                to="/admin/inventory?status=Low%20Stock"
+                to="/admin/inventory?status=Needs%20Attention"
               >
                 View all <ArrowRight size={13} />
               </Link>
@@ -207,7 +213,12 @@ export default function DashboardView() {
             <DataTable
               pageSize={4}
               caption="Low stock products"
-              data={lowStock}
+              data={inventoryAvailable ? lowStock : []}
+              emptyTitle={
+                inventoryAvailable
+                  ? 'No stock alerts'
+                  : 'Stock alerts unavailable'
+              }
               columns={[
                 {
                   key: 'name',

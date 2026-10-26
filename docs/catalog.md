@@ -114,11 +114,11 @@ concurrent requests. Category renames retain product assignment by ID.
 
 ## Implementation boundaries
 
-The new `catalog` Redux slice contains API data only. The existing `products` mock
-slice remains limited to Task 2's dashboard, inventory and POS demonstrations.
-This prevents catalog changes from creating stock updates, checkout or sales.
-There are no inventory columns or stock controls in the catalog API/forms.
-No Task 5 functionality is included.
+The `catalog` Redux slice contains API data only. Task 5 now manages stock through
+a separate [inventory service and slice](inventory.md). Product creation initializes
+zero stock; catalog edits never overwrite stock. A product must have zero stock before
+deletion. The existing `products` mock slice remains isolated to the Task 2 POS demo.
+There are no stock adjustment controls in catalog forms and no checkout/sales APIs.
 
 The frontend loads the catalog from the API and filters it locally for immediate
 table updates. The API also supports filtering for other clients. Lists are

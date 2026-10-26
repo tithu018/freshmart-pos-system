@@ -7,6 +7,8 @@ Task 3 connects the shared login to PostgreSQL-backed JWT authentication and
 enforces Admin/Cashier access without changing the business UI.
 Task 4 adds PostgreSQL-backed Products and Categories with Admin management
 and Cashier read-only access. See [catalog setup, APIs, and testing](docs/catalog.md).
+Task 5 adds persistent inventory, stock movements, thresholds and real stock alerts.
+See [inventory setup, APIs, and testing](docs/inventory.md).
 
 ## Requirements
 
@@ -36,15 +38,15 @@ See [authentication setup and testing](docs/authentication.md) for details.
 
 Admin pages: Dashboard, Point of Sale, Products, Categories, Inventory, Sales,
 Customers, Employees, Reports, Settings, and My Profile. Cashier pages:
-Dashboard, Point of Sale, Sales History, and My Profile. Cashier sales history
+Dashboard, Products, Categories, Inventory, Point of Sale, Sales History, and My Profile. Cashier sales history
 shows only that cashier's mock transactions. Both the frontend and backend
 restrict access to the assigned role. Wrong-role routes show an access-denied page.
 
 You can search and filter tables, add/edit catalog and directory records,
 adjust inventory, export CSVs, edit your profile, and save store preferences.
-Add products to a POS order and complete a **demo sale** to update inventory
+Add products to a POS order and complete a **demo sale** to update only demo stock
 and sales history. No real payment is collected. All state lives in Redux
-memory and resets on refresh, except Products and Categories, which now persist
+memory and resets on refresh, except Products, Categories and Inventory, which persist
 in PostgreSQL. Authentication persists through an HttpOnly JWT
 cookie and is restored into Redux on refresh. Mock business data uses
 October 17, 2026 as its reference date and USD as its display currency.
@@ -77,6 +79,7 @@ The default host is `localhost`, port is `5432`, database is `freshmart_pos`, an
 username is `freshmart`. Flyway creates the authentication user table and the
 dev profile seeds two missing users. Task 4 adds `categories` and `products`
 through a separate migration; the catalog starts empty, with no mock seed data.
+Task 5 adds one zero-stock inventory balance per product and an audit history table.
 
 ## Backend
 
@@ -139,9 +142,10 @@ Running the packaged app still requires the database settings above.
 
 Task 3 implements authentication and role access. Task 4 implements product
 and category CRUD, search, status, validation, and read-only Cashier catalog pages.
-Inventory, POS, sales, dashboards, and directory pages retain their Task 2 mock
-data and behavior. Catalog changes do not update those demos. Inventory stock
-updates, checkout, sales APIs, payment processing, and Task 5 are not implemented.
+Task 5 implements transactional stock updates, movement history, thresholds and
+inventory alerts. POS, sales, dashboard sales charts, and directory pages retain
+their Task 2 demo behavior. Demo checkout does not update real inventory.
+Checkout/sales APIs, payment processing, and Task 6 are not implemented.
 Docker, Docker Compose, GitHub Actions, AWS, and Kubernetes remain unchanged.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.

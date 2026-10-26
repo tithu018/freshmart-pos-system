@@ -3,10 +3,22 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import useMediaQuery from '../hooks/useMediaQuery'
+import { useDispatch, useSelector } from 'react-redux'
+import { loadInventory } from '../store/slices/inventorySlice'
 export default function Layout() {
+  const dispatch = useDispatch()
+  const userId = useSelector((state) => state.auth.user?.id)
   const mobile = useMediaQuery('(max-width: 900px)')
   const [open, setOpen] = useState(false),
     location = useLocation()
+  useEffect(() => {
+    dispatch(loadInventory())
+    const refresh = () => {
+      if (document.visibilityState === 'visible') dispatch(loadInventory())
+    }
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [dispatch, location.pathname, userId])
   useEffect(() => {
     setOpen(false)
     window.scrollTo(0, 0)
@@ -34,8 +46,8 @@ export default function Layout() {
           <span>© 2026 FreshMart POS. Made for a fresher everyday.</span>
           <span>
             <span className="status-dot" /> Signed in ·{' '}
-            {/\/(products|categories)\/?$/.test(location.pathname)
-              ? 'Catalog changes are saved'
+            {/\/(products|categories|inventory)\/?$/.test(location.pathname)
+              ? 'Changes are saved'
               : 'Business data remains a demo'}
           </span>
         </footer>

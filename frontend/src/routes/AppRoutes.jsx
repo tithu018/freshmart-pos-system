@@ -92,6 +92,7 @@ export default function AppRoutes() {
         <Route path="/cashier" element={<Layout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<CashierDashboard />} />
+          <Route path="inventory" element={<Inventory />} />
           <Route path="products" element={<Products />} />
           <Route path="categories" element={<Categories />} />
           <Route path="pos" element={<CashierPOS />} />

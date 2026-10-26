@@ -1,4 +1,4 @@
-# FreshMart frontend — Tasks 2, 3 and 4
+# FreshMart frontend — Tasks 2–5
 
 One responsive React application with a shared login and role-specific
 workspaces, built on the existing Vite, Redux Toolkit, and Tailwind CSS setup.
@@ -20,6 +20,7 @@ Your server-assigned role selects the workspace. Use either sign-out button
 to change accounts. Refresh restores authentication, while mock business data
 resets. See [Task 3 authentication](../docs/authentication.md) for full setup.
 Products and Categories persist in PostgreSQL; see [Task 4 catalog](../docs/catalog.md).
+Inventory, stock adjustments and history also persist; see [Task 5 inventory](../docs/inventory.md).
 
 ```sh
 npm run build
@@ -38,7 +39,7 @@ PostgreSQL. The existing Vite configuration is unchanged;
 | --- | --- |
 | Shared | `/login`, `/unauthorized` |
 | Admin | `/admin/dashboard`, `/admin/pos`, `/admin/products`, `/admin/categories`, `/admin/inventory`, `/admin/sales`, `/admin/customers`, `/admin/employees`, `/admin/reports`, `/admin/settings`, `/admin/profile` |
-| Cashier | `/cashier/dashboard`, `/cashier/products`, `/cashier/categories`, `/cashier/pos`, `/cashier/sales-history`, `/cashier/profile` |
+| Cashier | `/cashier/dashboard`, `/cashier/products`, `/cashier/categories`, `/cashier/inventory`, `/cashier/pos`, `/cashier/sales-history`, `/cashier/profile` |
 
 `/` and workspace roots redirect to the appropriate entry page. Role guards
 use the verified server role. Spring Security separately enforces API
@@ -54,9 +55,9 @@ authorization. Unknown paths display a recovery page.
 - `src/data/mockData.js`: catalog, categories, people, transactions, and chart
   fixtures. The reference date is October 17, 2026; prices use USD.
 - `src/store/slices/`: authenticated user, catalog/categories, cart, sales,
-  and management/settings state. Inventory derives from the catalog to keep
-  counts consistent within the Task 2 demo. The separate `catalogSlice.js` holds
-  PostgreSQL-backed Products/Categories without changing demo inventory or POS.
+  and management/settings state. `catalogSlice.js` holds API Products/Categories;
+  `inventorySlice.js` holds real stock, thresholds, movements and alert selectors.
+  The Task 2 product mock slice remains isolated to the POS demo.
 - `src/services/`: credentialed API requests, CSRF handshake, auth service, and
   Axios product/category services. Login and logout retain their existing client.
 - `src/components/AuthSession.jsx`: refresh restoration and expiry handling.
@@ -72,7 +73,8 @@ authorization. Unknown paths display a recovery page.
 - Search, filter, and paginate tables. The header searches the product catalog.
 - Admin product/category CRUD persists through the API, with duplicate name/SKU/
   barcode validation and category deletion protection. Cashiers have read-only views.
-- Adjust stock in Inventory; POS quantities respect available stock.
+- Adjust actual stock and thresholds in Inventory; review immutable movement history.
+  POS quantities still use separate demo stock and do not affect real balances.
 - Add products to the cart, adjust/remove quantities, choose a payment method,
   and complete a mock checkout. New sales appear in history and reduce stock.
 - View sale details; export products, inventory, sales, and reports as CSV.
@@ -84,9 +86,9 @@ authorization. Unknown paths display a recovery page.
 - Dashboard trend charts are explicitly marked illustrative. Reports and
   payment totals are derived from mock transactions.
 
-Product/category edits persist in PostgreSQL. Other business demos remain temporary
-and reset on refresh. Inventory, POS and sales services are not connected.
-There are no real payments or Task 5 features. The Task 3 file inventory and
+Product/category/inventory edits persist in PostgreSQL. Other business demos remain
+temporary and reset on refresh. POS and sales services are not connected.
+There are no real payments or Task 6 features. The Task 3 file inventory and
 authentication details are in [docs/authentication.md](../docs/authentication.md).
 
 ## Task 2 file inventory
