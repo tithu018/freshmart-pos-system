@@ -13,6 +13,8 @@ Task 6 connects POS billing to transactional checkout, sale records and inventor
 See [checkout setup, APIs, recovery and testing](docs/checkout.md).
 Task 7 adds real sales history, ownership checks, recent transactions and printable receipts.
 See [sales history, receipts and testing](docs/sales.md).
+Task 8 connects Admin/Cashier dashboards and Admin reports to database aggregations,
+with real charts, date filtering and CSV exports. See [analytics and testing](docs/analytics.md).
 
 ## Requirements
 
@@ -52,8 +54,9 @@ Add real products to a POS order and complete checkout with Cash or a simulated
 Card payment. Sale records and stock deductions persist together in PostgreSQL.
 There is no real card charge. Products, Categories, Inventory and Checkout are persistent;
 Sales History and recent dashboard transactions read those same checkout records.
-Receipts can be viewed and printed by Admin or the sale's Cashier. Reports and other
-unfinished business demos remain isolated to mock data. Authentication persists through an HttpOnly JWT
+Receipts can be viewed and printed by Admin or the sale's Cashier. Dashboard and report
+analytics use the saved sales and inventory records. Other unfinished business demos
+remain isolated to mock data. Authentication persists through an HttpOnly JWT
 cookie and is restored into Redux on refresh. Mock business data uses
 October 17, 2026 as its reference date and USD as its display currency.
 
@@ -150,9 +153,10 @@ Running the packaged app still requires the database settings above.
 Task 3 implements authentication and role access. Task 4 implements product
 and category CRUD, search, status, validation, and read-only Cashier catalog pages.
 Task 5 implements transactional stock updates, movement history, thresholds and
-inventory alerts. POS, sales, dashboard sales charts, and directory pages retain
-their Task 2 demo behavior. Demo checkout does not update real inventory.
-Checkout/sales APIs, payment processing, and Task 6 are not implemented.
+inventory alerts. Tasks 6–7 implement checkout, stock deductions, sales history and receipts.
+Task 8 implements database-backed dashboards, sales analytics and report CSV exports.
+Directory and Settings demos remain outside this scope. Card payments are simulated;
+refunds, supplier management, multi-store features and Task 9 are not implemented.
 Docker, Docker Compose, GitHub Actions, AWS, and Kubernetes remain unchanged.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.

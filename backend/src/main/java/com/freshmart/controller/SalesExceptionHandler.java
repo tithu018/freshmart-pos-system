@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Order(-1)
-@RestControllerAdvice(assignableTypes = SalesController.class)
+@RestControllerAdvice(assignableTypes = {SalesController.class, AnalyticsController.class})
 public class SalesExceptionHandler {
     @ExceptionHandler(CatalogException.class)
     ResponseEntity<ApiError> domain(CatalogException e) { return ResponseEntity.status(e.getStatus()).body(new ApiError(e.getCode(), e.getMessage())); }

@@ -7,6 +7,7 @@ import auth from './slices/authSlice'
 import products from './slices/productSlice'
 import cart from './slices/cartSlice'
 import sales from './slices/salesSlice'
+import analytics from './slices/analyticsSlice'
 import management from './slices/managementSlice'
 import catalog from './slices/catalogSlice'
 import inventory, { loadInventory } from './slices/inventorySlice'
@@ -29,6 +30,6 @@ inventoryRefresh.startListening({
 })
 
 export const store = configureStore({
-  reducer: { auth, products, cart, sales, management, catalog, inventory },
+  reducer: { auth, products, cart, sales, management, catalog, inventory, analytics },
   middleware: (getDefault) => getDefault().prepend(inventoryRefresh.middleware),
 })

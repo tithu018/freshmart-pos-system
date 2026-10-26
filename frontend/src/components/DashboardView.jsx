@@ -23,78 +23,51 @@ import {
   ProductName,
   StatCard,
 } from './ui'
-import { BarChart, DonutChart, LineChart } from './Charts'
-import { hourlySales, weeklyRevenue } from '../data/mockData'
+import { RevenueChart, PaymentChart } from './AnalyticsCharts'
 import { money } from '../utils/format'
-import { selectLowStock } from '../store/slices/inventorySlice'
-import { loadRecentSales } from '../store/slices/salesSlice'
-import { paymentLabel, salesPeriod } from '../utils/sales'
+import { loadDashboard } from '../store/slices/analyticsSlice'
+import { paymentLabel } from '../utils/sales'
 
 export default function DashboardView() {
-  const user = useSelector((state) => state.auth.user),
-    products = useSelector((state) => state.inventory.items)
+  const user = useSelector((state) => state.auth.user)
   const {
-    recent: result,
-    recentLoading,
-    recentError,
-  } = useSelector((state) => state.sales)
+    dashboard: result,
+    dashboardLoading: loading,
+    dashboardError: error,
+  } = useSelector((state) => state.analytics)
   const dispatch = useDispatch()
   const [period, setPeriod] = useState('today')
-  const lowStock = useSelector(selectLowStock)
-  const inventoryAvailable = useSelector(
-    (state) => state.inventory.loaded && !state.inventory.error,
-  )
   const admin = user.role === 'admin'
-  // Keep the timezone after a pending request clears its previous response.
-  const [timeZone, setTimeZone] = useState('Asia/Colombo')
+  const refresh = () => dispatch(loadDashboard({ role: user.role, period }))
   useEffect(() => {
-    if (result?.timeZone) setTimeZone(result.timeZone)
-  }, [result?.timeZone])
-  useEffect(() => {
-    const refresh = () =>
-      dispatch(loadRecentSales({ ...salesPeriod(period, timeZone), size: 4 }))
+    const refresh = () => dispatch(loadDashboard({ role: user.role, period }))
     refresh()
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)
-  }, [dispatch, period, timeZone])
-  const salesAvailable = !!result && !recentLoading && !recentError
-  const sales = salesAvailable ? result.content : []
-  const total = result?.summary.revenue || 0,
-    units = result?.summary.units || 0,
-    orders = result?.summary.orders || 0
-  const segments = admin
-    ? [
-        { label: 'Fresh Produce', value: 28, color: '#12b76a' },
-        { label: 'Dairy & Eggs', value: 22, color: '#34a7fa' },
-        { label: 'Beverages', value: 18, color: '#8b5cf6' },
-        { label: 'Bakery', value: 18, color: '#ffba45' },
-        { label: 'Others', value: 14, color: '#e5eaf0' },
-      ]
-    : ['Cash', 'Card (simulated)'].map((label, i) => ({
-        label,
-        value: result?.summary[i === 0 ? 'cash' : 'card'] || 0,
-        color: ['#12b76a', '#34a7fa', '#8b5cf6', '#ffba45'][i],
-      }))
+  }, [dispatch, period, user.role, user.id])
+  const available = result && !loading && !error
+  const today = available ? result.today : null
+  const inventory = available ? result.inventory : null
   return (
     <>
       <PageHeading
         title={`Welcome back, ${user.name.split(' ')[0]}! 👋`}
-        description="Here’s what’s happening at your store today."
+        description={
+          admin
+            ? 'Here’s what’s happening at your store today.'
+            : 'Your sales and register activity today.'
+        }
       >
         <span className="date-chip">
-          <CalendarDays size={15} />{' '}
-          {new Intl.DateTimeFormat('en-US', {
-            timeZone,
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          }).format(new Date())}
+          <CalendarDays size={15} />
+          {available
+            ? `${result.range.to} · ${result.range.timeZone}`
+            : 'Store dashboard'}
         </span>
       </PageHeading>
       <div className="welcome-strip">
         <span className="welcome-strip-icon">
-          <LeafIcon />
+          <ShoppingCart size={22} />
         </span>
         <div>
           <strong>A fresh day. A world of possibilities.</strong>
@@ -108,55 +81,62 @@ export default function DashboardView() {
           Open POS <ArrowRight size={16} />
         </Link>
       </div>
+      {loading && (
+        <p role="status" className="p-4 text-muted">
+          Loading dashboard…
+        </p>
+      )}
+      {error && (
+        <div className="p-4">
+          <p role="alert" className="form-error">
+            {error}
+          </p>
+          <Button variant="secondary" onClick={refresh}>
+            Retry dashboard
+          </Button>
+        </div>
+      )}
       <div className="stats-grid">
         <StatCard
-          label={period === 'today' ? 'Today’s Sales' : 'Weekly Sales'}
-          value={salesAvailable ? money(total) : '—'}
+          label={admin ? 'Today’s Sales' : 'Your Sales Today'}
+          value={today ? money(today.revenue) : '—'}
           icon={ShoppingCart}
           note={
-            salesAvailable ? `${orders} completed orders` : 'Sales unavailable'
+            today ? `${today.orders} completed transactions` : 'Loading sales'
           }
         />
         <StatCard
-          label="Total Orders"
-          value={salesAvailable ? orders : '—'}
+          label="Total Transactions"
+          value={today?.orders ?? '—'}
           icon={ReceiptText}
           color="blue"
-          note={
-            period === 'today'
-              ? 'Today’s transactions'
-              : 'This week’s transactions'
-          }
+          note="Today’s transactions"
         />
         <StatCard
           label={admin ? 'Total Products' : 'Items Sold'}
-          value={
-            admin
-              ? inventoryAvailable
-                ? products.length
-                : '—'
-              : salesAvailable
-                ? units
-                : '—'
-          }
+          value={admin ? (inventory?.products ?? '—') : (today?.units ?? '—')}
           icon={Package}
           color="amber"
-          note={admin ? 'Across all categories' : 'In the selected period'}
+          note={admin ? 'Across all categories' : 'Your items sold today'}
         />
         <StatCard
-          label={admin ? 'Low Stock Items' : 'Average Order'}
+          label={admin ? 'Low / Out of Stock' : 'Average Sale'}
           value={
             admin
-              ? inventoryAvailable
-                ? lowStock.length
+              ? inventory
+                ? `${inventory.lowStock} / ${inventory.outOfStock}`
                 : '—'
-              : salesAvailable
-                ? money(result.summary.average)
+              : today
+                ? money(today.average)
                 : '—'
           }
           icon={admin ? TriangleAlert : CreditCard}
           color="rose"
-          note={admin ? 'Ready for your attention' : 'Per transaction'}
+          note={
+            admin
+              ? 'Low stock / out of stock products'
+              : 'Per transaction today'
+          }
         />
       </div>
       <div className="dashboard-charts">
@@ -176,63 +156,55 @@ export default function DashboardView() {
           }
         >
           <div className="chart-headline">
-            <strong>{salesAvailable ? money(total) : '—'}</strong>
+            <strong>{available ? money(result.summary.revenue) : '—'}</strong>
             <span className="chart-trend">
               <TrendingUp size={14} /> Overview
             </span>
           </div>
           <p className="chart-description">
-            {salesAvailable
-              ? `Total revenue from ${orders} orders`
-              : 'Loading sales totals'}
+            {available
+              ? `${result.summary.orders} transactions · ${result.range.from} to ${result.range.to}`
+              : 'Sales revenue'}
           </p>
-          <BarChart
-            values={
-              period === 'today'
-                ? hourlySales
-                : hourlySales.map((v) => Math.round(v * 1.4))
-            }
-          />
-          <p className="chart-note">Illustrative hourly activity</p>
+          {available && (
+            <RevenueChart
+              points={result.activity}
+              hourly={period === 'today'}
+            />
+          )}
         </Card>
         <Card
           title="Revenue Trend"
           icon={TrendingUp}
-          action={<span className="mini-label">Selected period</span>}
+          action={<span className="mini-label">Last 7 days</span>}
         >
-          <div className="chart-headline">
-            <strong>{salesAvailable ? money(total) : '—'}</strong>
-          </div>
-          <p className="chart-description">A little growth, every day</p>
-          <LineChart values={weeklyRevenue} />
-          <p className="chart-note">Illustrative weekly trend</p>
+          <p className="chart-description chart-description-spaced">
+            Daily completed sales in the store timezone
+          </p>
+          {available && <RevenueChart points={result.weekly} line />}
         </Card>
         <Card
-          title={admin ? 'Category Distribution' : 'Payment Methods'}
+          title="Payment Methods"
           icon={ChartPie}
           action={<span className="mini-label">Selected period</span>}
         >
           <p className="chart-description chart-description-spaced">
-            {admin
-              ? 'A balanced basket of everyday essentials'
-              : 'How your customers prefer to pay'}
+            Cash and Card share of sales revenue
           </p>
-          <DonutChart
-            segments={segments}
-            value={admin ? products.length : orders}
-            label={admin ? 'Products' : 'Orders'}
-          />
-          <p className="chart-note">
-            {admin
-              ? 'Illustrative category share'
-              : 'Based on your completed transactions'}
-          </p>
+          {available && (
+            <PaymentChart
+              payments={result.payments}
+              orders={result.summary.orders}
+            />
+          )}
         </Card>
       </div>
-      <div className={`dashboard-bottom ${!admin ? 'cashier-bottom' : ''}`}>
+      <div
+        className={`dashboard-bottom mb-5 ${!admin ? 'cashier-bottom' : ''}`}
+      >
         {admin && (
           <Card
-            title="Low Stock Alerts"
+            title="Inventory Alerts"
             icon={TriangleAlert}
             action={
               <Link
@@ -244,13 +216,11 @@ export default function DashboardView() {
             }
           >
             <DataTable
-              pageSize={4}
-              caption="Low stock products"
-              data={inventoryAvailable ? lowStock : []}
+              pageSize={5}
+              caption="Low and out of stock products"
+              data={inventory?.alerts || []}
               emptyTitle={
-                inventoryAvailable
-                  ? 'No stock alerts'
-                  : 'Stock alerts unavailable'
+                available ? 'No stock alerts' : 'Stock alerts unavailable'
               }
               columns={[
                 {
@@ -261,8 +231,13 @@ export default function DashboardView() {
                 {
                   key: 'stock',
                   label: 'Stock',
-                  render: (p) => <Badge tone="rose">{p.stock} left</Badge>,
+                  render: (p) => (
+                    <Badge tone="rose">
+                      {p.stock === 0 ? 'Out of stock' : `${p.stock} left`}
+                    </Badge>
+                  ),
                 },
+                { key: 'minStock', label: 'Minimum' },
                 {
                   key: 'action',
                   label: '',
@@ -291,91 +266,101 @@ export default function DashboardView() {
             </Link>
           }
         >
-          {recentLoading && (
-            <p role="status" className="p-4 text-muted">
-              Loading recent sales…
-            </p>
-          )}
-          {recentError && (
-            <div className="p-4">
-              <p role="alert" className="form-error">
-                {recentError}
-              </p>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  dispatch(
-                    loadRecentSales({
-                      ...salesPeriod(period, timeZone),
-                      size: 4,
-                    }),
-                  )
-                }
-              >
-                Retry recent sales
-              </Button>
-            </div>
-          )}
-          {salesAvailable && (
-            <DataTable
-              caption="Recent transactions"
-              pageSize={4}
-              data={sales.slice(0, 4)}
-              columns={[
-                {
-                  key: 'id',
-                  label: 'Order ID',
-                  render: (s) => (
-                    <Link
-                      className="order-id"
-                      to={`/${user.role}/${admin ? 'sales' : 'sales-history'}?sale=${encodeURIComponent(s.id)}`}
-                      title={s.id}
-                    >
-                      {s.id.slice(0, 8)}…
-                    </Link>
-                  ),
-                },
-                ...(admin
-                  ? [{ key: 'userName', label: 'Cashier' }]
-                  : [
-                      {
-                        key: 'items',
-                        label: 'Items',
-                        render: (s) => s.quantity,
-                      },
-                    ]),
-                {
-                  key: 'payment',
-                  label: 'Payment',
-                  render: (s) => (
-                    <span className="payment-label">
-                      <CreditCard size={13} />
-                      {paymentLabel(s.payment)}
-                    </span>
-                  ),
-                },
-                {
-                  key: 'total',
-                  label: 'Amount',
-                  render: (s) => <strong>{money(s.total)}</strong>,
-                },
-                {
-                  key: 'status',
-                  label: 'Status',
-                  render: () => <Badge>Completed</Badge>,
-                },
-              ]}
-            />
-          )}
+          <DataTable
+            caption="Recent transactions"
+            pageSize={4}
+            data={available ? result.recent : []}
+            emptyTitle={
+              available
+                ? 'No transactions in this period'
+                : 'Transactions unavailable'
+            }
+            columns={[
+              {
+                key: 'id',
+                label: 'Order ID',
+                render: (s) => (
+                  <Link
+                    className="order-id"
+                    to={`/${user.role}/${admin ? 'sales' : 'sales-history'}?sale=${encodeURIComponent(s.id)}`}
+                    title={s.id}
+                  >
+                    {s.id.slice(0, 8)}…
+                  </Link>
+                ),
+              },
+              ...(admin
+                ? [{ key: 'userName', label: 'Cashier' }]
+                : [{ key: 'quantity', label: 'Items' }]),
+              {
+                key: 'payment',
+                label: 'Payment',
+                render: (s) => (
+                  <span className="payment-label">
+                    <CreditCard size={13} />
+                    {paymentLabel(s.payment)}
+                  </span>
+                ),
+              },
+              {
+                key: 'total',
+                label: 'Amount',
+                render: (s) => <strong>{money(s.total)}</strong>,
+              },
+              {
+                key: 'status',
+                label: 'Status',
+                render: () => <Badge>Completed</Badge>,
+              },
+            ]}
+          />
         </Card>
       </div>
+      {admin ? (
+        <Card
+          title="Best-selling Products"
+          icon={Package}
+          action={
+            <span className="mini-label">
+              Top 10 by quantity · selected period
+            </span>
+          }
+        >
+          <DataTable
+            caption="Dashboard best-selling products"
+            data={available ? result.topProducts : []}
+            pageSize={5}
+            columns={[
+              {
+                key: 'name',
+                label: 'Product',
+                render: (p) => <ProductName product={p} />,
+              },
+              { key: 'quantity', label: 'Units Sold' },
+              {
+                key: 'revenue',
+                label: 'Gross Revenue',
+                render: (p) => money(p.revenue),
+              },
+            ]}
+          />
+          <p className="p-4 text-xs text-muted">
+            Product revenue is before order discounts and tax.
+          </p>
+        </Card>
+      ) : (
+        <Card title="Your Personal Sales Summary" icon={ReceiptText}>
+          <p className="p-4 text-muted">
+            {available
+              ? `${result.range.from} to ${result.range.to}: ${result.summary.orders} transactions, ${result.summary.units} items, ${money(result.summary.revenue)} revenue, ${money(result.summary.discounts)} discounts and ${money(result.summary.taxes)} taxes. Average sale: ${money(result.summary.average)}.`
+              : 'Your summary will appear when sales load.'}
+          </p>
+        </Card>
+      )}
       <div className="dashboard-note">
         <span className="status-dot" /> All set for a productive day{' '}
         <span>FreshMart · Main Branch</span>
       </div>
     </>
   )
-}
-function LeafIcon() {
-  return <ShoppingCart size={22} />
 }

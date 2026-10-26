@@ -1,4 +1,4 @@
-# FreshMart frontend — Tasks 2–7
+# FreshMart frontend — Tasks 2–8
 
 One responsive React application with a shared login and role-specific
 workspaces, built on the existing Vite, Redux Toolkit, and Tailwind CSS setup.
@@ -24,6 +24,7 @@ Inventory, stock adjustments and history also persist; see [Task 5 inventory](..
 POS checkout and stock deductions persist atomically; see [Task 6 checkout](../docs/checkout.md).
 Sales history, details, recent transactions and printable receipts use those records;
 see [Task 7 sales](../docs/sales.md).
+Dashboards and Admin reports use backend analytics; see [Task 8 analytics](../docs/analytics.md).
 
 ```sh
 npm run build
@@ -57,8 +58,8 @@ authorization. Unknown paths display a recovery page.
 - `src/routes/AppRoutes.jsx`: single React Router tree and role guards.
   Standalone `/admin/receipts/:id` and `/cashier/receipts/:id` pages use the same guards
   and fetch authorized sale snapshots before allowing printing.
-- `src/data/mockData.js`: catalog, categories, people, transactions, and chart
-  fixtures. The reference date is October 17, 2026; prices use USD.
+- `src/data/mockData.js`: remaining catalog, categories and people demo fixtures.
+  Dashboard/report sales and chart fixtures have been removed. Prices use USD.
 - `src/store/slices/`: authenticated user, catalog/categories, cart, sales,
   and management/settings state. `catalogSlice.js` holds API Products/Categories;
   `inventorySlice.js` holds real stock, thresholds, movements and alert selectors.
@@ -92,9 +93,11 @@ authorization. Unknown paths display a recovery page.
 - Preview name/phone edits locally (account email/ID/role stay read-only).
   Update mock store details, tax percentage, receipt footer,
   and low-stock notification preference for the current in-memory session.
-- Dashboard trend charts remain explicitly illustrative. Recent transactions, sales
-  summary cards and Cashier payment totals use actual sales; the Reports demo still
-  uses its original mock transactions and is not a full reporting implementation.
+- Dashboard charts, totals, product rankings and inventory alerts use real APIs.
+  Cashiers see only their own sales. Admin reports support daily, weekly, monthly
+  and custom periods, payment/cashier breakdowns and backend-generated CSV exports.
+  `analyticsSlice.js` tracks loading/errors and discards stale requests or session data;
+  `AnalyticsCharts.jsx` adds responsive charts without changing shared UI components.
 
 Product/category/inventory edits and completed checkouts persist in PostgreSQL.
 POS uses `checkoutService.js` and the cart slice, without mock product or sales data.
@@ -103,7 +106,7 @@ can be retried safely. Other business demos remain temporary. Store Settings is 
 a local preview; checkout tax comes from the backend `CHECKOUT_TAX_RATE` setting (default 0).
 Receipt branding and dates come from backend `STORE_NAME` and `STORE_TIME_ZONE`;
 the local demo Settings page does not override printed receipts.
-There is no real payment gateway, refund implementation or Task 8 work.
+There is no real payment gateway, refund implementation or Task 9 work.
 The Task 3 file inventory and
 authentication details are in [docs/authentication.md](../docs/authentication.md).
 
