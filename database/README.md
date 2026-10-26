@@ -35,5 +35,8 @@ startup. The migration lives in `backend/src/main/resources/db/migration/`.
 Hibernate validates the schema and does not recreate it. The dev profile adds
 missing Admin and Cashier accounts using BCrypt hashes. See
 [authentication setup](../docs/authentication.md) for credentials and testing.
-No product, inventory, POS, or sales tables are created. The files in `init/`
+Task 4 adds `categories` and `products` through `V2__create_catalog.sql`, including
+unique SKU/barcode/category-name constraints and a restrictive category foreign key.
+The catalog starts empty. Existing user records and migration V1 are preserved.
+No inventory, POS, or sales tables are created. The files in `init/`
 remain placeholders; do not run them as a second initialization mechanism.

@@ -5,6 +5,8 @@ Task 1 provides the development setup. Task 2 adds a responsive frontend demo
 with separate Admin and Cashier workspaces inside one React application.
 Task 3 connects the shared login to PostgreSQL-backed JWT authentication and
 enforces Admin/Cashier access without changing the business UI.
+Task 4 adds PostgreSQL-backed Products and Categories with Admin management
+and Cashier read-only access. See [catalog setup, APIs, and testing](docs/catalog.md).
 
 ## Requirements
 
@@ -42,7 +44,8 @@ You can search and filter tables, add/edit catalog and directory records,
 adjust inventory, export CSVs, edit your profile, and save store preferences.
 Add products to a POS order and complete a **demo sale** to update inventory
 and sales history. No real payment is collected. All state lives in Redux
-memory and resets on refresh. Authentication persists through an HttpOnly JWT
+memory and resets on refresh, except Products and Categories, which now persist
+in PostgreSQL. Authentication persists through an HttpOnly JWT
 cookie and is restored into Redux on refresh. Mock business data uses
 October 17, 2026 as its reference date and USD as its display currency.
 
@@ -72,7 +75,8 @@ Follow [database/README.md](database/README.md) to create the local database and
 role. Update `DB_PASSWORD` in `backend/.env` before starting the backend.
 The default host is `localhost`, port is `5432`, database is `freshmart_pos`, and
 username is `freshmart`. Flyway creates the authentication user table and the
-dev profile seeds two missing users. No business tables are implemented.
+dev profile seeds two missing users. Task 4 adds `categories` and `products`
+through a separate migration; the catalog starts empty, with no mock seed data.
 
 ## Backend
 
@@ -133,9 +137,11 @@ Running the packaged app still requires the database settings above.
 
 ## Scope
 
-Task 3 implements authentication and role access only. Task 2's business UI
-remains a mock: products, inventory, POS, sales, and directory backend logic
-are not implemented. No real payment processing or Task 4 work is included.
+Task 3 implements authentication and role access. Task 4 implements product
+and category CRUD, search, status, validation, and read-only Cashier catalog pages.
+Inventory, POS, sales, dashboards, and directory pages retain their Task 2 mock
+data and behavior. Catalog changes do not update those demos. Inventory stock
+updates, checkout, sales APIs, payment processing, and Task 5 are not implemented.
 Docker, Docker Compose, GitHub Actions, AWS, and Kubernetes remain unchanged.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.

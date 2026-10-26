@@ -1,66 +1,69 @@
 import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { saveProduct } from '../store/slices/productSlice'
+import { saveCatalogProduct } from '../store/slices/catalogSlice'
 import { Button, Field, Modal, useToast } from './ui'
 
 export default function ProductForm({ product, onClose }) {
-  const categories = useSelector((state) => state.products.categories),
-    products = useSelector((state) => state.products.items)
+  const { categories, saving } = useSelector((state) => state.catalog)
   const [form, setForm] = useState(
-    product || {
-      name: '',
-      sku: '',
-      category: categories[0].name,
-      price: '',
-      stock: 0,
-      minStock: 10,
-      unit: 'each',
-      icon: '📦',
-      color: 'green',
-    },
+    product
+      ? { ...product, barcode: product.barcode || '' }
+      : {
+          name: '',
+          sku: '',
+          barcode: '',
+          categoryId: categories[0]?.id || '',
+          price: '',
+          description: '',
+          status: 'ACTIVE',
+          unit: 'each',
+          icon: '📦',
+          color: 'green',
+        },
   )
-  const [error, setError] = useState(''),
-    dispatch = useDispatch(),
+  const [error, setError] = useState('')
+  const dispatch = useDispatch(),
     toast = useToast()
   const field = (name) => ({
     value: form[name],
+    disabled: saving,
     onChange: (e) => setForm({ ...form, [name]: e.target.value }),
   })
+  const close = () => {
+    if (!saving) onClose()
+  }
   return (
     <Modal
       title={product ? 'Edit product' : 'Add a fresh product'}
-      onClose={onClose}
+      onClose={close}
     >
       <form
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault()
+          setError('')
           if (!form.name.trim() || !form.sku.trim())
             return setError('Enter a product name and SKU.')
-          if (
-            products.some(
-              (p) =>
-                p.sku.toLowerCase() === form.sku.trim().toLowerCase() &&
-                p.id !== form.id,
+          if (!form.categoryId)
+            return setError('Create and select a category first.')
+          try {
+            await dispatch(saveCatalogProduct(form)).unwrap()
+            toast(
+              product ? 'Product updated.' : 'Product added to your catalog.',
             )
-          )
-            return setError('A product with this SKU already exists.')
-          dispatch(
-            saveProduct({
-              ...form,
-              name: form.name.trim(),
-              sku: form.sku.trim().toUpperCase(),
-              price: Number(form.price),
-              stock: Number(form.stock),
-              minStock: Number(form.minStock),
-            }),
-          )
-          toast(product ? 'Product updated.' : 'Product added to your catalog.')
-          onClose()
+            onClose()
+          } catch (failure) {
+            setError(failure.message || 'Unable to save the product.')
+          }
         }}
       >
         <p className="form-intro">
           Keep your shelves and your catalog in sync.
         </p>
+        {!categories.length && (
+          <p role="alert" className="form-error">
+            Add a category before creating a product.
+          </p>
+        )}
         <div className="form-grid">
           <Field
             label="Product name"
@@ -77,36 +80,39 @@ export default function ProductForm({ product, onClose }) {
             {...field('sku')}
           />
           <Field label="Category">
-            <select {...field('category')}>
+            <select required {...field('categoryId')}>
+              <option value="" disabled>
+                Select a category
+              </option>
               {categories.map((c) => (
-                <option key={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
               ))}
             </select>
           </Field>
+          <Field label="Barcode" maxLength={64} {...field('barcode')} />
           <Field
             label="Price ($)"
             type="number"
             min="0.01"
+            max="9999999999.99"
             step="0.01"
             required
             {...field('price')}
           />
-          <Field label="Unit" required {...field('unit')} />
+          <Field label="Unit" required maxLength={30} {...field('unit')} />
+          <Field label="Status">
+            <select {...field('status')}>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+          </Field>
           <Field
-            label="Opening stock"
-            type="number"
-            min="0"
-            step="1"
-            required
-            {...field('stock')}
-          />
-          <Field
-            label="Low stock threshold"
-            type="number"
-            min="1"
-            step="1"
-            required
-            {...field('minStock')}
+            label="Description"
+            className="col-span-full"
+            maxLength={1000}
+            {...field('description')}
           />
           <Field label="Product symbol">
             <select {...field('icon')}>
@@ -138,11 +144,16 @@ export default function ProductForm({ product, onClose }) {
           </p>
         )}
         <div className="modal-actions">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={saving}
+            onClick={close}
+          >
             Cancel
           </Button>
-          <Button type="submit">
-            {product ? 'Save changes' : 'Add product'}
+          <Button type="submit" disabled={saving || !categories.length}>
+            {saving ? 'Saving…' : product ? 'Save changes' : 'Add product'}
           </Button>
         </div>
       </form>

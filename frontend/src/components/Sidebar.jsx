@@ -38,6 +38,8 @@ export const adminLinks = [
 ]
 export const cashierLinks = [
   ['dashboard', 'Dashboard', LayoutDashboard],
+  ['products', 'Products', Package],
+  ['categories', 'Categories', Grid2X2],
   ['pos', 'Point of Sale', ShoppingCart],
   ['sales-history', 'Sales History', History],
   ['profile', 'My Profile', UserRound],

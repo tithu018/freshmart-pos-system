@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { Grid2X2, Pencil, Plus } from 'lucide-react'
+import { Grid2X2, Pencil, Plus, Trash2 } from 'lucide-react'
 import {
   Badge,
   Button,
@@ -12,16 +11,30 @@ import {
   SearchInput,
   useToast,
 } from '../../components/ui'
-import { saveCategory } from '../../store/slices/productSlice'
+import {
+  saveCatalogCategory,
+  deleteCatalogCategory,
+} from '../../store/slices/catalogSlice'
+import useCatalog from '../../hooks/useCatalog'
+import CatalogFeedback from '../../components/CatalogFeedback'
+import CatalogDeleteDialog from '../../components/CatalogDeleteDialog'
 
 export default function Categories() {
-  const categories = useSelector((state) => state.products.categories),
-    products = useSelector((state) => state.products.items)
+  const catalog = useCatalog()
+  const {
+    categories,
+    products,
+    admin,
+    dispatch,
+    loading,
+    saving,
+    error: loadError,
+  } = catalog
   const [query, setQuery] = useState(''),
     [editing, setEditing] = useState(null),
+    [deleting, setDeleting] = useState(null),
     [error, setError] = useState('')
-  const dispatch = useDispatch(),
-    toast = useToast()
+  const toast = useToast()
   const filtered = useMemo(
     () =>
       categories.filter((c) =>
@@ -35,26 +48,37 @@ export default function Categories() {
     setEditing(category)
     setError('')
   }
+  const close = () => {
+    if (!saving) setEditing(null)
+  }
+  const field = (name) => ({
+    value: editing[name],
+    disabled: saving,
+    onChange: (e) => setEditing({ ...editing, [name]: e.target.value }),
+  })
   return (
     <>
       <PageHeading
         title="Categories"
         description="A place for everything your customers love."
       >
-        <Button
-          onClick={() =>
-            open({
-              name: '',
-              description: '',
-              icon: '📦',
-              color: 'green',
-              status: 'Active',
-            })
-          }
-        >
-          <Plus size={17} />
-          Add category
-        </Button>
+        {admin && (
+          <Button
+            disabled={loading || !!loadError || saving}
+            onClick={() =>
+              open({
+                name: '',
+                description: '',
+                icon: '📦',
+                color: 'green',
+                status: 'ACTIVE',
+              })
+            }
+          >
+            <Plus size={17} />
+            Add category
+          </Button>
+        )}
       </PageHeading>
       <div className="category-summary">
         <span className="stat-icon tint-green">
@@ -74,73 +98,88 @@ export default function Categories() {
             placeholder="Search categories..."
           />
         </div>
-        <DataTable
-          data={filtered}
-          pageSize={8}
-          caption="Product categories"
-          columns={[
-            {
-              key: 'name',
-              label: 'Category',
-              render: (c) => (
-                <div className="product-name">
-                  <span className={`product-thumb tint-${c.color}`}>
-                    {c.icon}
-                  </span>
-                  <strong>{c.name}</strong>
-                </div>
-              ),
-            },
-            { key: 'description', label: 'Description' },
-            {
-              key: 'products',
-              label: 'Products',
-              render: (c) =>
-                products.filter((p) => p.category === c.name).length,
-            },
-            {
-              key: 'status',
-              label: 'Status',
-              render: (c) => <Badge>{c.status}</Badge>,
-            },
-            {
-              key: 'actions',
-              label: 'Actions',
-              className: 'text-right',
-              render: (c) => (
-                <button
-                  className="icon-button"
-                  aria-label={`Edit ${c.name}`}
-                  onClick={() => open({ ...c })}
-                >
-                  <Pencil size={15} />
-                </button>
-              ),
-            },
-          ]}
-        />
+        <CatalogFeedback {...catalog} />
+        {!loading && !loadError && (
+          <DataTable
+            data={filtered}
+            pageSize={8}
+            caption="Product categories"
+            emptyTitle={
+              categories.length ? 'No results found' : 'No categories yet'
+            }
+            columns={[
+              {
+                key: 'name',
+                label: 'Category',
+                render: (c) => (
+                  <div className="product-name">
+                    <span className={`product-thumb tint-${c.color}`}>
+                      {c.icon}
+                    </span>
+                    <strong>{c.name}</strong>
+                  </div>
+                ),
+              },
+              { key: 'description', label: 'Description' },
+              { key: 'productCount', label: 'Products' },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (c) => (
+                  <Badge>{c.status === 'ACTIVE' ? 'Active' : 'Inactive'}</Badge>
+                ),
+              },
+              ...(admin
+                ? [
+                    {
+                      key: 'actions',
+                      label: 'Actions',
+                      className: 'text-right',
+                      render: (c) => (
+                        <>
+                          <button
+                            className="icon-button"
+                            disabled={saving}
+                            aria-label={`Edit ${c.name}`}
+                            onClick={() => open({ ...c })}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            className="icon-button"
+                            disabled={saving}
+                            aria-label={`Delete ${c.name}`}
+                            onClick={() => setDeleting(c)}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        )}
       </Card>
-      {editing && (
+      {admin && editing && (
         <Modal
           title={editing.id ? 'Edit category' : 'Add category'}
-          onClose={() => setEditing(null)}
+          onClose={close}
         >
           <form
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault()
+              setError('')
               if (!editing.name.trim())
                 return setError('Enter a category name.')
-              if (
-                categories.some(
-                  (c) =>
-                    c.name.toLowerCase() ===
-                      editing.name.trim().toLowerCase() && c.id !== editing.id,
-                )
-              )
-                return setError('This category already exists.')
-              dispatch(saveCategory({ ...editing, name: editing.name.trim() }))
-              toast('Category saved.')
-              setEditing(null)
+              try {
+                await dispatch(saveCatalogCategory(editing)).unwrap()
+                toast('Category saved.')
+                setEditing(null)
+              } catch (failure) {
+                setError(failure.message || 'Unable to save the category.')
+              }
             }}
           >
             <div className="form-grid">
@@ -149,28 +188,16 @@ export default function Categories() {
                 className="col-span-full"
                 required
                 maxLength={50}
-                value={editing.name}
-                onChange={(e) =>
-                  setEditing({ ...editing, name: e.target.value })
-                }
+                {...field('name')}
               />
               <Field
                 label="Description"
                 className="col-span-full"
-                required
                 maxLength={120}
-                value={editing.description}
-                onChange={(e) =>
-                  setEditing({ ...editing, description: e.target.value })
-                }
+                {...field('description')}
               />
               <Field label="Symbol">
-                <select
-                  value={editing.icon}
-                  onChange={(e) =>
-                    setEditing({ ...editing, icon: e.target.value })
-                  }
-                >
+                <select {...field('icon')}>
                   {['📦', '🥬', '🥛', '🥐', '🥩', '🧃', '🍿', '🧴', '🌾'].map(
                     (icon) => (
                       <option key={icon}>{icon}</option>
@@ -179,14 +206,9 @@ export default function Categories() {
                 </select>
               </Field>
               <Field label="Status">
-                <select
-                  value={editing.status}
-                  onChange={(e) =>
-                    setEditing({ ...editing, status: e.target.value })
-                  }
-                >
-                  <option>Active</option>
-                  <option>Inactive</option>
+                <select {...field('status')}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
                 </select>
               </Field>
             </div>
@@ -199,14 +221,25 @@ export default function Categories() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setEditing(null)}
+                disabled={saving}
+                onClick={close}
               >
                 Cancel
               </Button>
-              <Button type="submit">Save category</Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Saving…' : 'Save category'}
+              </Button>
             </div>
           </form>
         </Modal>
+      )}
+      {admin && deleting && (
+        <CatalogDeleteDialog
+          item={deleting}
+          kind="category"
+          action={deleteCatalogCategory}
+          onClose={() => setDeleting(null)}
+        />
       )}
     </>
   )
