@@ -51,7 +51,7 @@ export default function Settings() {
           </Card>
           <Card title="Checkout & Receipts" icon={ReceiptText}>
             <p className="form-intro">
-              These preferences apply to new demo sales.
+              Preview preferences for this browser session.
             </p>
             <div className="form-grid">
               <Field
@@ -61,7 +61,7 @@ export default function Settings() {
                 max="100"
                 step="0.01"
                 required
-                hint="Applied to your POS subtotal at checkout."
+                hint="Preview only. Actual checkout tax is configured separately for the store."
                 {...field('taxRate')}
               />
               <Field

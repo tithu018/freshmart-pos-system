@@ -26,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "app.checkout.tax-rate=7.50")
 @AutoConfigureMockMvc
+@org.springframework.test.context.ContextConfiguration(initializers = TestDatabaseSafety.class)
 @ActiveProfiles("test")
 class CheckoutIntegrationTest {
     @Autowired MockMvc mvc;

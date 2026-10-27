@@ -30,7 +30,8 @@ export function RevenueChart({ points, hourly = false, line = false }) {
     40 + (i * (width - 60)) / Math.max(points.length - 1, 1),
     170 - (Number(p.revenue) / max) * 140,
   ])
-  const step = Math.max(1, Math.ceil(points.length / 8))
+  const labelSlots = Math.max(2, Math.min(8, Math.floor((width - 60) / 50)))
+  const step = Math.max(1, Math.ceil((points.length - 1) / (labelSlots - 1)))
   return (
     <div
       ref={container}
@@ -110,7 +111,9 @@ export function RevenueChart({ points, hourly = false, line = false }) {
                   <title>{title}</title>
                 </rect>
               )}
-              {(i % step === 0 || i === points.length - 1) && (
+              {((i % step === 0 &&
+                (i === 0 || points.length - 1 - i >= step)) ||
+                i === points.length - 1) && (
                 <text
                   x={x}
                   y="198"

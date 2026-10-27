@@ -1,4 +1,4 @@
-# FreshMart frontend — Tasks 2–9
+# FreshMart frontend — Tasks 2–10
 
 One responsive React application with a shared login and role-specific
 workspaces, built on the existing Vite, Redux Toolkit, and Tailwind CSS setup.
@@ -26,12 +26,19 @@ Sales history, details, recent transactions and printable receipts use those rec
 see [Task 7 sales](../docs/sales.md).
 Dashboards and Admin reports use backend analytics; see [Task 8 analytics](../docs/analytics.md).
 Employees, Customers and profiles use real APIs; see [Task 9 people management](../docs/people.md).
+Task 10 adds regression and React component tests, safe render recovery, and validation
+and responsive fixes; see [test results and reproduction](../docs/testing.md).
 
 ```sh
 npm run build
 npm run preview
 npm test
 ```
+
+`npm test` runs the Node API/Redux tests and the Vitest/React Testing Library
+component suite. Use `npm run test:unit` or `npm run test:components` separately
+while working on a specific regression. Component tests use jsdom; the browser
+checks documented in Task 10 cover the real application and responsive layouts.
 
 The production build goes to `dist/`. Preview runs on port 4173. Node.js
 22.12+ is required, as in Task 1. Login requires the Spring Boot backend and
@@ -111,7 +118,7 @@ can be retried safely, including the selected customer. Store Settings is still
 a local preview; checkout tax comes from the backend `CHECKOUT_TAX_RATE` setting (default 0).
 Receipt branding and dates come from backend `STORE_NAME` and `STORE_TIME_ZONE`;
 the local demo Settings page does not override printed receipts.
-There is no real payment gateway, refund implementation or Task 10 work.
+There is no real payment gateway, refund implementation or Task 11 work.
 The Task 3 file inventory and
 authentication details are in [docs/authentication.md](../docs/authentication.md).
 

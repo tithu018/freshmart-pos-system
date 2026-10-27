@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@org.springframework.test.context.ContextConfiguration(initializers = TestDatabaseSafety.class)
 @ActiveProfiles("test")
 class SalesHistoryIntegrationTest {
     @Autowired MockMvc mvc;

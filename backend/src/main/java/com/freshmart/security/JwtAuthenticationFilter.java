@@ -10,6 +10,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -57,6 +59,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             } catch (JwtException | IllegalArgumentException exception) {
                 SecurityContextHolder.clearContext();
                 cookies.clear(response);
+            } catch (DataAccessException exception) {
+                // Authentication runs before controller advice. Preserve the cookie so
+                // a temporary database outage can be retried without losing the session.
+                SecurityContextHolder.clearContext();
+                response.setStatus(503);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"code\":\"SERVICE_UNAVAILABLE\",\"message\":\"Unable to verify your session. Please try again.\"}");
+                return;
             }
         }
         chain.doFilter(request, response);

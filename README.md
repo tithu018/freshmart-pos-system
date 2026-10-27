@@ -17,6 +17,8 @@ Task 8 connects Admin/Cashier dashboards and Admin reports to database aggregati
 with real charts, date filtering and CSV exports. See [analytics and testing](docs/analytics.md).
 Task 9 adds employee account management, persisted profiles, customers, purchase history,
 and optional customer selection at checkout. See [people management and testing](docs/people.md).
+Task 10 verifies Tasks 1–9, hardens validation and error handling, and adds isolated
+PostgreSQL and React component tests. See [test results and reproduction](docs/testing.md).
 
 ## Requirements
 
@@ -160,7 +162,8 @@ inventory alerts. Tasks 6–7 implement checkout, stock deductions, sales histor
 Task 8 implements database-backed dashboards, sales analytics and report CSV exports.
 Task 9 implements employee accounts, profiles, customers and linked purchase history.
 Settings remains a local demo. Card payments are simulated;
-refunds, supplier management, multi-store features and Task 10 are not implemented.
+Task 10 adds reliability fixes and regression coverage without new business features.
+Refunds, supplier management, multi-store features and Task 11 are not implemented.
 Docker, Docker Compose, GitHub Actions, AWS, and Kubernetes remain unchanged.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.

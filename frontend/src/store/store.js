@@ -4,6 +4,7 @@ import {
   isAnyOf,
 } from '@reduxjs/toolkit'
 import auth from './slices/authSlice'
+import { sanitizeAction } from './devTools'
 import products from './slices/productSlice'
 import cart from './slices/cartSlice'
 import sales from './slices/salesSlice'
@@ -31,6 +32,17 @@ inventoryRefresh.startListening({
 })
 
 export const store = configureStore({
-  reducer: { auth, products, cart, sales, management, people, catalog, inventory, analytics },
+  devTools: import.meta.env.DEV ? { actionSanitizer: sanitizeAction } : false,
+  reducer: {
+    auth,
+    products,
+    cart,
+    sales,
+    management,
+    people,
+    catalog,
+    inventory,
+    analytics,
+  },
   middleware: (getDefault) => getDefault().prepend(inventoryRefresh.middleware),
 })

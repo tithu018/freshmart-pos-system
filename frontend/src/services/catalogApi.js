@@ -41,9 +41,9 @@ export async function catalogRequest(
         (status === 401
           ? 'Please sign in to continue.'
           : status === 403
-            ? 'You do not have permission to change the catalog.'
+            ? 'You do not have permission to perform this action.'
             : status
-              ? 'The catalog request could not be completed.'
+              ? 'The request could not be completed. Please try again.'
               : 'Unable to reach FreshMart. Please check your connection and try again.'),
       status,
       error.response?.data?.code || 'REQUEST_FAILED',

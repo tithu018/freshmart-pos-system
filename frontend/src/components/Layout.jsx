@@ -52,7 +52,9 @@ export default function Layout() {
                     location.pathname,
                   )
                 ? 'Changes are saved'
-                : 'Business data remains a demo'}
+                : /\/settings\/?$/.test(location.pathname)
+                  ? 'Settings preview resets on refresh'
+                  : 'Connected workspace'}
           </span>
         </footer>
       </div>
