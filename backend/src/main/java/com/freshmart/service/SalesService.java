@@ -3,6 +3,7 @@ package com.freshmart.service;
 import com.freshmart.dto.*;
 import com.freshmart.model.*;
 import com.freshmart.repository.SaleRepository;
+import com.freshmart.repository.CustomerRepository;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -24,10 +25,11 @@ public class SalesService {
     private final InventoryService inventory;
     private final TransactionTemplate transaction;
     private final BigDecimal taxRate;
+    private final CustomerRepository customers;
 
-    public SalesService(SaleRepository sales, InventoryService inventory, TransactionTemplate transaction,
+    public SalesService(SaleRepository sales, InventoryService inventory, TransactionTemplate transaction, CustomerRepository customers,
             @Value("${app.checkout.tax-rate:0}") BigDecimal taxRate) {
-        this.sales = sales; this.inventory = inventory; this.transaction = transaction;
+        this.sales = sales; this.inventory = inventory; this.transaction = transaction; this.customers = customers;
         if (taxRate.signum() < 0 || taxRate.compareTo(new BigDecimal("100")) > 0 || taxRate.stripTrailingZeros().scale() > 2)
             throw new IllegalArgumentException("Checkout tax rate must be between 0 and 100 with at most two decimal places.");
         this.taxRate = taxRate.setScale(2);
@@ -52,6 +54,11 @@ public class SalesService {
                 // The unique key is reserved before touching stock. Competing inserts wait
                 // for this transaction; rollback releases both the key and all stock changes.
                 Sale sale = sales.saveAndFlush(new Sale(key, hash, actor, request.payment(), taxRate));
+                if (request.customerId() != null) {
+                    var customer = customers.lockById(request.customerId()).orElseThrow(() -> CatalogException.missing("Customer"));
+                    if (!customer.isEnabled()) throw new CatalogException(409, "CUSTOMER_INACTIVE", "This customer is inactive. Select another customer or use guest checkout.");
+                    sale.customer(customer);
+                }
                 BigDecimal subtotal = BigDecimal.ZERO;
                 for (var item : items) {
                     var product = inventory.lockForCheckout(item.productId());
@@ -94,6 +101,8 @@ public class SalesService {
                 .append(request.expectedTaxRate().setScale(2).toPlainString());
         for (var i : items) value.append('|').append(i.productId().length()).append(':').append(i.productId())
                 .append(':').append(i.quantity()).append(':').append(i.expectedUnitPrice().setScale(2).toPlainString());
+        // Keep the original fingerprint for guests, including retries from earlier tasks.
+        if (request.customerId() != null) value.append("|customer:").append(request.customerId().length()).append(':').append(request.customerId());
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.toString().getBytes(StandardCharsets.UTF_8))); }
         catch (NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }

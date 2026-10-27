@@ -1,4 +1,4 @@
-# FreshMart frontend — Tasks 2–8
+# FreshMart frontend — Tasks 2–9
 
 One responsive React application with a shared login and role-specific
 workspaces, built on the existing Vite, Redux Toolkit, and Tailwind CSS setup.
@@ -25,6 +25,7 @@ POS checkout and stock deductions persist atomically; see [Task 6 checkout](../d
 Sales history, details, recent transactions and printable receipts use those records;
 see [Task 7 sales](../docs/sales.md).
 Dashboards and Admin reports use backend analytics; see [Task 8 analytics](../docs/analytics.md).
+Employees, Customers and profiles use real APIs; see [Task 9 people management](../docs/people.md).
 
 ```sh
 npm run build
@@ -58,12 +59,14 @@ authorization. Unknown paths display a recovery page.
 - `src/routes/AppRoutes.jsx`: single React Router tree and role guards.
   Standalone `/admin/receipts/:id` and `/cashier/receipts/:id` pages use the same guards
   and fetch authorized sale snapshots before allowing printing.
-- `src/data/mockData.js`: remaining catalog, categories and people demo fixtures.
-  Dashboard/report sales and chart fixtures have been removed. Prices use USD.
+- `src/data/mockData.js`: remaining unused catalog/category demo fixtures and login metadata.
+  Dashboard/report and employee/customer fixtures have been removed. Prices use USD.
 - `src/store/slices/`: authenticated user, catalog/categories, cart, sales,
   and management/settings state. `catalogSlice.js` holds API Products/Categories;
   `inventorySlice.js` holds real stock, thresholds, movements and alert selectors.
   `salesSlice.js` holds server-paginated history, recent sales, details and cashier options.
+  `peopleSlice.js` holds employee/customer lists, forms, lookup and purchase history;
+  profile updates are confirmed by the API through `authSlice.js`.
   The old product mock slice is not used by POS or sales history.
 - `src/services/`: credentialed API requests, CSRF handshake, auth service, and
   Axios product/category services. Login and logout retain their existing client.
@@ -75,7 +78,7 @@ authorization. Unknown paths display a recovery page.
 - `public/favicon.svg`: local FreshMart icon. Grocery artwork and product
   symbols render locally with no external asset requests.
 
-## Demo interactions
+## Interactions
 
 - Search, filter, and paginate tables. The header searches the product catalog.
 - Admin product/category CRUD persists through the API, with duplicate name/SKU/
@@ -88,9 +91,11 @@ authorization. Unknown paths display a recovery page.
 - Search Sale ID, filter dates/payment/cashier, sort and paginate on the server.
   Cashiers see only their own sales. Export the current sales page as CSV; product,
   inventory and report exports retain their existing behavior.
-- Add/edit customer and employee directory entries. Directory roles do not
-  create login accounts or change the authenticated role.
-- Preview name/phone edits locally (account email/ID/role stay read-only).
+- Admin can add/edit employee login accounts, assign roles, and activate/deactivate
+  employees. Self-deactivation and removal of the last active Admin are blocked.
+- Admin can add/edit customers, search/filter, change status and view purchase history.
+  `POSCustomerPicker.jsx` offers active customers to both roles; guest checkout remains available.
+- Save your own name/phone to your account (email/ID/role stay read-only).
   Update mock store details, tax percentage, receipt footer,
   and low-stock notification preference for the current in-memory session.
 - Dashboard charts, totals, product rankings and inventory alerts use real APIs.
@@ -102,11 +107,11 @@ authorization. Unknown paths display a recovery page.
 Product/category/inventory edits and completed checkouts persist in PostgreSQL.
 POS uses `checkoutService.js` and the cart slice, without mock product or sales data.
 Pending checkout keys survive refresh in per-user session storage so unknown outcomes
-can be retried safely. Other business demos remain temporary. Store Settings is still
+can be retried safely, including the selected customer. Store Settings is still
 a local preview; checkout tax comes from the backend `CHECKOUT_TAX_RATE` setting (default 0).
 Receipt branding and dates come from backend `STORE_NAME` and `STORE_TIME_ZONE`;
 the local demo Settings page does not override printed receipts.
-There is no real payment gateway, refund implementation or Task 9 work.
+There is no real payment gateway, refund implementation or Task 10 work.
 The Task 3 file inventory and
 authentication details are in [docs/authentication.md](../docs/authentication.md).
 

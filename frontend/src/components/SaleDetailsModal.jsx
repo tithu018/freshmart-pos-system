@@ -47,6 +47,8 @@ export default function SaleDetailsModal({ id, onClose }) {
           <p className="form-intro">
             Sale ID: {data.sale.id}
             <br />
+            Customer: {data.sale.customerName || 'Guest'}
+            <br />
             Served by {data.sale.userName} · {paymentLabel(data.sale.payment)}
           </p>
           <div className="table-scroll">

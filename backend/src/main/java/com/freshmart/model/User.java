@@ -7,6 +7,7 @@ import java.util.Locale;
 
 @Entity
 @Table(name = "app_users")
+@org.hibernate.annotations.DynamicUpdate
 public class User {
     @Id
     @Column(length = 36)
@@ -58,4 +59,11 @@ public class User {
     public String getPhone() { return phone; }
     public boolean isEnabled() { return enabled; }
     public long getAuthVersion() { return authVersion; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void updateProfile(String name, String phone) { this.name = name; this.phone = phone; }
+    public void updateAccount(String name, String email, String phone, Role role, boolean enabled, String newHash) {
+        if (!this.email.equals(email) || this.role != role || this.enabled != enabled || newHash != null) authVersion++;
+        updateProfile(name, phone); this.email = email; this.role = role; this.enabled = enabled;
+        if (newHash != null) passwordHash = newHash;
+    }
 }

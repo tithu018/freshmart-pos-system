@@ -68,7 +68,7 @@ class AnalyticsIntegrationTest {
     }
     void sale(String id, String owner, String payment, Instant date, String subtotal, String discount, String tax) {
         var sub = new BigDecimal(subtotal); var disc = new BigDecimal(discount); var vat = new BigDecimal(tax);
-        jdbc.update("INSERT INTO sales VALUES (?,?,?, ?,?,?, ?,?,?,?,?,?)", id, UUID.randomUUID().toString(), "test-hash",
+        jdbc.update("INSERT INTO sales (id,idempotency_key,request_hash,user_id,user_name,occurred_at,payment,subtotal,discount,tax_rate,tax,total) VALUES (?,?,?, ?,?,?, ?,?,?,?,?,?)", id, UUID.randomUUID().toString(), "test-hash",
                 owner, owner, date.atOffset(ZoneOffset.UTC), payment, sub, disc, new BigDecimal("10"), vat, sub.subtract(disc).add(vat));
     }
     void item(String sale, String product, String name, long quantity, String price) {

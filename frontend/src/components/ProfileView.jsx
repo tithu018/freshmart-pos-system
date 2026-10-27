@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   Check,
@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   UserRound,
 } from 'lucide-react'
-import { updateProfile } from '../store/slices/authSlice'
+import { saveProfile, restoreSession } from '../store/slices/authSlice'
 import { Avatar, Badge, Button, Card, Field, PageHeading, useToast } from './ui'
 
 export default function ProfileView() {
@@ -23,9 +23,17 @@ export default function ProfileView() {
   const dispatch = useDispatch(),
     toast = useToast(),
     admin = user.role === 'admin'
+  const saving = useSelector((state) => state.auth.profileSaving)
+  useEffect(() => {
+    dispatch(restoreSession())
+  }, [dispatch])
+  useEffect(() => {
+    if (!editing)
+      setForm({ name: user.name, email: user.email, phone: user.phone || '' })
+  }, [user.name, user.email, user.phone, editing])
   const field = (name) => ({
     value: form[name],
-    readOnly: !editing,
+    readOnly: !editing || saving,
     onChange: (e) => setForm({ ...form, [name]: e.target.value }),
   })
   return (
@@ -79,17 +87,21 @@ export default function ProfileView() {
           }
         >
           <p className="form-intro">
-            Your account details. Name and phone edits are a local preview;
-            account changes are not connected yet.
+            Update your name and phone number. Contact an Admin to change your
+            login email or role.
           </p>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault()
               if (!form.name.trim()) return setError('Please enter your name.')
-              dispatch(updateProfile({ ...form, name: form.name.trim() }))
-              setEditing(false)
               setError('')
-              toast('Profile preview updated. Your login account is unchanged.')
+              try {
+                await dispatch(saveProfile(form)).unwrap()
+                setEditing(false)
+                toast('Profile saved.')
+              } catch (error) {
+                setError(error.message || 'Unable to save profile.')
+              }
             }}
           >
             <div className="form-grid">
@@ -136,6 +148,7 @@ export default function ProfileView() {
                 <Button
                   type="button"
                   variant="secondary"
+                  disabled={saving}
                   onClick={() => {
                     setEditing(false)
                     setError('')
@@ -148,9 +161,9 @@ export default function ProfileView() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">
+                <Button type="submit" disabled={saving}>
                   <Check size={16} />
-                  Save profile
+                  {saving ? 'Saving…' : 'Save profile'}
                 </Button>
               </div>
             )}

@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { authService } from '../../services/authService.js'
+import { peopleService } from '../../services/peopleService.js'
 
 const failure = (error) => ({
   message: error.message,
@@ -31,6 +32,7 @@ export const restoreSession = createAsyncThunk(
   {
     condition: (_, { getState }) =>
       !getState().auth.checking &&
+      !getState().auth.profileSaving &&
       !['signingIn', 'signingOut'].includes(getState().auth.status),
   },
 )
@@ -52,7 +54,23 @@ const anonymous = (state) => {
   state.expiresAt = null
   state.status = 'anonymous'
   state.checking = false
+  state.profileRequestId = null
+  state.profileSaving = false
 }
+
+export const saveProfile = createAsyncThunk(
+  'auth/saveProfile',
+  async (details, api) => {
+    const id = api.getState().auth.user?.id
+    try {
+      return await peopleService.profile(details)
+    } catch (error) {
+      if (error.status === 401 && api.getState().auth.user?.id === id)
+        api.dispatch(sessionExpired())
+      return api.rejectWithValue(failure(error))
+    }
+  },
+)
 
 const authSlice = createSlice({
   name: 'auth',
@@ -64,6 +82,8 @@ const authSlice = createSlice({
     requestId: null,
     error: null,
     notice: null,
+    profileRequestId: null,
+    profileSaving: false,
   },
   reducers: {
     clearAuthFeedback: (state) => {
@@ -75,17 +95,36 @@ const authSlice = createSlice({
       state.requestId = null
       state.notice = 'Your session has ended. Please sign in again.'
     },
-    // Task 2 profile edits stay local; account identity and role are server-owned.
-    updateProfile: (state, { payload }) => {
-      if (state.user) {
-        state.user.name = payload.name
-        state.user.phone = payload.phone
-      }
-    },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(saveProfile.pending, (state, action) => {
+        state.profileSaving = true
+        state.profileRequestId = action.meta.requestId
+        state.requestId = null
+        state.checking = false
+      })
+      .addCase(saveProfile.fulfilled, (state, action) => {
+        if (
+          state.profileRequestId !== action.meta.requestId ||
+          state.user?.id !== action.payload.id
+        )
+          return
+        state.profileSaving = false
+        state.profileRequestId = null
+        state.requestId = null
+        state.checking = false
+        state.user.name = action.payload.name
+        state.user.phone = action.payload.phone
+      })
+      .addCase(saveProfile.rejected, (state, action) => {
+        if (state.profileRequestId !== action.meta.requestId) return
+        state.profileSaving = false
+        state.profileRequestId = null
+      })
       .addCase(login.pending, (state, action) => {
+        state.profileRequestId = null
+        state.profileSaving = false
         state.status = 'signingIn'
         state.checking = false
         state.requestId = action.meta.requestId
@@ -137,6 +176,8 @@ const authSlice = createSlice({
         }
       })
       .addCase(logout.pending, (state, action) => {
+        state.profileRequestId = null
+        state.profileSaving = false
         state.status = 'signingOut'
         state.checking = false
         state.requestId = action.meta.requestId
@@ -155,6 +196,5 @@ const authSlice = createSlice({
       })
   },
 })
-export const { clearAuthFeedback, sessionExpired, updateProfile } =
-  authSlice.actions
+export const { clearAuthFeedback, sessionExpired } = authSlice.actions
 export default authSlice.reducer

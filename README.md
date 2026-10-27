@@ -15,6 +15,8 @@ Task 7 adds real sales history, ownership checks, recent transactions and printa
 See [sales history, receipts and testing](docs/sales.md).
 Task 8 connects Admin/Cashier dashboards and Admin reports to database aggregations,
 with real charts, date filtering and CSV exports. See [analytics and testing](docs/analytics.md).
+Task 9 adds employee account management, persisted profiles, customers, purchase history,
+and optional customer selection at checkout. See [people management and testing](docs/people.md).
 
 ## Requirements
 
@@ -55,8 +57,9 @@ Card payment. Sale records and stock deductions persist together in PostgreSQL.
 There is no real card charge. Products, Categories, Inventory and Checkout are persistent;
 Sales History and recent dashboard transactions read those same checkout records.
 Receipts can be viewed and printed by Admin or the sale's Cashier. Dashboard and report
-analytics use the saved sales and inventory records. Other unfinished business demos
-remain isolated to mock data. Authentication persists through an HttpOnly JWT
+analytics use the saved sales and inventory records. Employees, Customers and profile
+updates also persist in PostgreSQL. Store Settings remains a local preview.
+Authentication persists through an HttpOnly JWT
 cookie and is restored into Redux on refresh. Mock business data uses
 October 17, 2026 as its reference date and USD as its display currency.
 
@@ -155,8 +158,9 @@ and category CRUD, search, status, validation, and read-only Cashier catalog pag
 Task 5 implements transactional stock updates, movement history, thresholds and
 inventory alerts. Tasks 6–7 implement checkout, stock deductions, sales history and receipts.
 Task 8 implements database-backed dashboards, sales analytics and report CSV exports.
-Directory and Settings demos remain outside this scope. Card payments are simulated;
-refunds, supplier management, multi-store features and Task 9 are not implemented.
+Task 9 implements employee accounts, profiles, customers and linked purchase history.
+Settings remains a local demo. Card payments are simulated;
+refunds, supplier management, multi-store features and Task 10 are not implemented.
 Docker, Docker Compose, GitHub Actions, AWS, and Kubernetes remain unchanged.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.

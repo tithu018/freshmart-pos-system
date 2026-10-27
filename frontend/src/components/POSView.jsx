@@ -12,7 +12,6 @@ import {
   ShoppingBag,
   ShoppingCart,
   Trash2,
-  UserRound,
   X,
 } from 'lucide-react'
 import {
@@ -29,6 +28,7 @@ import {
   calculateTotals,
 } from '../store/slices/cartSlice'
 import { readPendingCheckout } from '../services/checkoutService'
+import POSCustomerPicker from './POSCustomerPicker'
 import { money } from '../utils/format'
 import {
   Badge,
@@ -226,11 +226,7 @@ export default function POSView() {
               <Trash2 size={17} />
             </button>
           </div>
-          <div className="walk-in">
-            <UserRound size={17} />
-            <span>Walk-in customer</span>
-            <Badge tone="neutral">Retail</Badge>
-          </div>
+          <POSCustomerPicker locked={locked} />
           <div className="order-items">
             {!cart.length ? (
               <EmptyState
@@ -453,6 +449,7 @@ export default function POSView() {
             </span>
             <h3>Thank you for shopping fresh!</h3>
             <p>{receipt.id}</p>
+            <p>{receipt.customerName || 'Guest checkout'}</p>
           </div>
           <div className="receipt-items">
             {receipt.items.map((item) => (

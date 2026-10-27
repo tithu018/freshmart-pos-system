@@ -16,6 +16,8 @@ public class Sale {
     @Column(name = "request_hash", nullable = false, length = 64) private String requestHash;
     @Column(name = "user_id", nullable = false, length = 36) private String userId;
     @Column(name = "user_name", nullable = false, length = 100) private String userName;
+    @Column(name = "customer_id", length = 36) private String customerId;
+    @Column(name = "customer_name", length = 100) private String customerName;
     @Column(name = "occurred_at", nullable = false) private Instant occurredAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 16) private PaymentMethod payment;
     @Column(nullable = false, precision = 18, scale = 2) private BigDecimal subtotal = BigDecimal.ZERO;
@@ -32,6 +34,9 @@ public class Sale {
         this.payment = payment; taxRate = rate;
     }
     public void addItem(SaleItem item) { items.add(item); }
+    public void customer(Customer customer) { customerId = customer.getId(); customerName = customer.getName(); }
+    public String getCustomerId() { return customerId; }
+    public String getCustomerName() { return customerName; }
     public void totals(BigDecimal subtotal, BigDecimal discount, BigDecimal tax) {
         this.subtotal = subtotal; this.discount = discount; this.tax = tax;
         total = subtotal.subtract(discount).add(tax);

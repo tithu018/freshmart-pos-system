@@ -1,7 +1,7 @@
 import { afterEach, test, mock } from 'node:test'
 import assert from 'node:assert/strict'
 import { configureStore } from '@reduxjs/toolkit'
-import auth, { login, logout, restoreSession, sessionExpired, updateProfile } from '../src/store/slices/authSlice.js'
+import auth, { login, logout, restoreSession, sessionExpired, saveProfile } from '../src/store/slices/authSlice.js'
 import { authService } from '../src/services/authService.js'
 
 const session = { user: { id: 'EMP-002', name: 'Sarah', email: 'cashier@freshmart.com', role: 'CASHIER', phone: '' }, expiresAt: new Date(Date.now() + 3600000).toISOString() }
@@ -70,11 +70,13 @@ test('logout completion wins over an older in-flight session response', async ()
   assert.equal(state.getState().auth.status, 'anonymous')
 })
 
-test('local profile edits cannot modify account identity, email, or role', async () => {
+test('confirmed profile edits cannot modify account identity, email, or role', async () => {
   mock.method(globalThis, 'fetch', async () => json(session))
   const state = store()
   await state.dispatch(restoreSession())
-  state.dispatch(updateProfile({ name: 'Preview', phone: '123', id: 'EMP-001', email: 'admin@freshmart.com', role: 'admin' }))
+  state.dispatch(saveProfile.pending('profile'))
+  state.dispatch(saveProfile.fulfilled({ name: 'Saved', phone: '123', id: 'EMP-002', email: 'admin@freshmart.com', role: 'ADMIN' }, 'profile'))
+  assert.equal(state.getState().auth.user.name, 'Saved')
   assert.equal(state.getState().auth.user.role, 'cashier')
   assert.equal(state.getState().auth.user.id, 'EMP-002')
   assert.equal(state.getState().auth.user.email, 'cashier@freshmart.com')

@@ -29,6 +29,7 @@ export const submitCheckout = createAsyncThunk(
       userId = state.auth.user.id,
       cart = state.cart
     const snapshot = cart.attempt || {
+      customer: cart.customer,
       items: cart.items.map((item) => ({ ...item })),
       request: {
         idempotencyKey: crypto.randomUUID(),
@@ -40,6 +41,7 @@ export const submitCheckout = createAsyncThunk(
         discount: Number(cart.discount || 0),
         expectedTaxRate: cart.taxRate,
         payment: cart.payment,
+        ...(cart.customer ? { customerId: cart.customer.id } : {}),
       },
     }
     try {
@@ -78,6 +80,7 @@ export const submitCheckout = createAsyncThunk(
 
 const initialState = {
   items: [],
+  customer: null,
   products: [],
   taxRate: 0,
   maxTotal: 1000000000,
@@ -123,6 +126,7 @@ const cartSlice = createSlice({
     clearCart: (state) => {
       if (!locked(state)) {
         state.items = []
+        state.customer = null
         state.discount = ''
         state.error = null
       }
@@ -133,6 +137,9 @@ const cartSlice = createSlice({
     setPayment: (state, { payload }) => {
       if (!locked(state)) state.payment = payload
     },
+    setCustomer: (state, { payload }) => {
+      if (!locked(state)) state.customer = payload ? { id: payload.id, name: payload.name } : null
+    },
     dismissReceipt: (state) => {
       state.receipt = null
     },
@@ -141,6 +148,7 @@ const cartSlice = createSlice({
       state.items = payload.items
       state.discount = String(payload.request.discount)
       state.payment = payload.request.payment
+      state.customer = payload.customer || (payload.request.customerId ? { id: payload.request.customerId, name: 'Selected customer' } : null)
       state.error = null
     },
   },
@@ -180,6 +188,7 @@ const cartSlice = createSlice({
       .addCase(submitCheckout.fulfilled, (state, action) => {
         if (state.checkoutId !== action.meta.requestId) return
         state.receipt = action.payload
+        state.customer = null
         state.items = []
         state.discount = ''
         state.attempt = null
@@ -209,6 +218,7 @@ export const {
   clearCart,
   setDiscount,
   setPayment,
+  setCustomer,
   dismissReceipt,
   restoreCheckout,
 } = cartSlice.actions

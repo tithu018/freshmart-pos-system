@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   Pencil,
@@ -6,6 +6,8 @@ import {
   UsersRound,
   UserCheck,
   HeartHandshake,
+  History,
+  Power,
 } from 'lucide-react'
 import {
   Avatar,
@@ -20,37 +22,97 @@ import {
   StatCard,
   useToast,
 } from './ui'
-import { savePerson } from '../store/slices/managementSlice'
+import {
+  loadEmployees,
+  loadCustomers,
+  savePerson,
+} from '../store/slices/peopleSlice'
+import { restoreSession, sessionExpired } from '../store/slices/authSlice'
 import { money } from '../utils/format'
+import CustomerHistory from './CustomerHistory'
 
 export default function PeopleView({ type }) {
-  const people = useSelector((state) => state.management[type]),
-    customers = type === 'customers'
+  const customers = type === 'customers'
+  const state = useSelector((state) => state.people)
+  const result = state[type],
+    loading = state[`${type}Loading`],
+    loadError = state[`${type}Error`],
+    saving = state.saveLoading
+  const user = useSelector((state) => state.auth.user)
   const [query, setQuery] = useState(''),
     [editing, setEditing] = useState(null),
-    [status, setStatus] = useState('All statuses'),
-    [error, setError] = useState('')
+    [status, setStatus] = useState(''),
+    [role, setRole] = useState('')
+  const [page, setPage] = useState(0),
+    [error, setError] = useState(''),
+    [history, setHistory] = useState(null)
   const dispatch = useDispatch(),
     toast = useToast()
-  const filtered = useMemo(
-    () =>
-      people.filter(
-        (p) =>
-          `${p.name} ${p.email} ${p.phone}`
-            .toLowerCase()
-            .includes(query.toLowerCase()) &&
-          (status === 'All statuses' || status === p.status),
-      ),
-    [people, query, status],
-  )
+  const load = customers ? loadCustomers : loadEmployees
+  const filters = {
+    q: query,
+    enabled: status,
+    ...(customers ? {} : { role }),
+    page,
+    size: 10,
+  }
+  const refresh = () => dispatch(load(filters))
+  useEffect(() => {
+    const refresh = () =>
+      dispatch(
+        (type === 'customers' ? loadCustomers : loadEmployees)({
+          q: query,
+          enabled: status,
+          ...(type === 'customers' ? {} : { role }),
+          page,
+          size: 10,
+        }),
+      )
+    const timer = setTimeout(refresh, 200)
+    window.addEventListener('focus', refresh)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [dispatch, type, query, status, role, page, user.id])
   const open = (person) => {
     setError('')
-    setEditing({ ...person })
+    setEditing({
+      ...person,
+      email: person.email || '',
+      phone: person.phone || '',
+      password: '',
+    })
   }
   const field = (name) => ({
     value: editing[name],
     onChange: (e) => setEditing({ ...editing, [name]: e.target.value }),
+    disabled: saving,
   })
+  const save = async (person) => {
+    setError('')
+    try {
+      const saved = await dispatch(savePerson({ type, person })).unwrap()
+      if (!customers && saved.id === user.id) {
+        if (
+          saved.role.toLowerCase() !== user.role ||
+          saved.email !== user.email ||
+          person.password
+        ) {
+          dispatch(sessionExpired())
+          return
+        }
+        dispatch(restoreSession())
+      }
+      setEditing(null)
+      toast(`${customers ? 'Customer' : 'Employee'} saved.`)
+      refresh()
+    } catch (error) {
+      setError(error.message || 'Unable to save these details.')
+    }
+  }
+  const summary = !loading && !loadError ? result?.summary : null
+  const people = !loading && !loadError ? result?.content || [] : []
   return (
     <>
       <PageHeading
@@ -62,15 +124,14 @@ export default function PeopleView({ type }) {
         }
       >
         <Button
+          disabled={saving}
           onClick={() =>
             open({
               name: '',
               email: '',
               phone: '',
-              status: 'Active',
-              ...(customers
-                ? { visits: 0, spent: 0 }
-                : { role: 'cashier', shift: 'Morning' }),
+              enabled: true,
+              role: 'CASHIER',
             })
           }
         >
@@ -81,7 +142,7 @@ export default function PeopleView({ type }) {
       <div className="stats-grid stats-three">
         <StatCard
           label={customers ? 'Total Customers' : 'Team Members'}
-          value={people.length}
+          value={summary?.total ?? '—'}
           icon={UsersRound}
           note={
             customers
@@ -91,7 +152,7 @@ export default function PeopleView({ type }) {
         />
         <StatCard
           label={customers ? 'Active Customers' : 'Active Employees'}
-          value={people.filter((p) => p.status === 'Active').length}
+          value={summary?.active ?? '—'}
           icon={UserCheck}
           color="blue"
           note="Ready for another great day"
@@ -99,15 +160,17 @@ export default function PeopleView({ type }) {
         <StatCard
           label={customers ? 'Customer Spending' : 'Cashiers'}
           value={
-            customers
-              ? money(people.reduce((s, p) => s + p.spent, 0))
-              : people.filter((p) => p.role === 'cashier').length
+            summary
+              ? customers
+                ? money(summary.spending)
+                : summary.cashiers
+              : '—'
           }
           icon={HeartHandshake}
           color="amber"
           note={
             customers
-              ? 'Lifetime demo purchases'
+              ? 'Lifetime linked purchases'
               : 'At the heart of every checkout'
           }
         />
@@ -116,22 +179,75 @@ export default function PeopleView({ type }) {
         <div className="table-toolbar">
           <SearchInput
             value={query}
-            onChange={setQuery}
+            onChange={(value) => {
+              setQuery(value)
+              setPage(0)
+            }}
             placeholder={`Search ${type}...`}
           />
           <select
             aria-label="Filter people status"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => {
+              setStatus(e.target.value)
+              setPage(0)
+            }}
           >
-            <option>All statuses</option>
-            <option>Active</option>
-            <option>Inactive</option>
+            <option value="">All statuses</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
           </select>
+          {!customers && (
+            <select
+              aria-label="Filter employee role"
+              value={role}
+              onChange={(e) => {
+                setRole(e.target.value)
+                setPage(0)
+              }}
+            >
+              <option value="">All roles</option>
+              <option value="ADMIN">Admin</option>
+              <option value="CASHIER">Cashier</option>
+            </select>
+          )}
         </div>
+        {loading && (
+          <p role="status" className="p-4 text-muted">
+            Loading {type}…
+          </p>
+        )}
+        {loadError && (
+          <div className="p-4">
+            <p role="alert" className="form-error">
+              {loadError}
+            </p>
+            <Button variant="secondary" onClick={refresh}>
+              Retry {type}
+            </Button>
+          </div>
+        )}
+        {error && !editing && (
+          <p role="alert" className="p-4 form-error">
+            {error}
+          </p>
+        )}
         <DataTable
-          data={filtered}
+          data={people}
           caption={customers ? 'Customers' : 'Employees'}
+          emptyTitle={
+            loading
+              ? 'Loading records…'
+              : loadError
+                ? 'Records unavailable'
+                : 'No matching records'
+          }
+          pagination={{
+            page,
+            size: 10,
+            totalElements: result?.totalElements || 0,
+            onPageChange: setPage,
+          }}
           columns={[
             {
               key: 'name',
@@ -146,11 +262,11 @@ export default function PeopleView({ type }) {
                 </div>
               ),
             },
-            { key: 'email', label: 'Email' },
+            { key: 'email', label: 'Email', render: (p) => p.email || '—' },
             { key: 'phone', label: 'Phone' },
             ...(customers
               ? [
-                  { key: 'visits', label: 'Visits' },
+                  { key: 'visits', label: 'Purchases' },
                   {
                     key: 'spent',
                     label: 'Total Spent',
@@ -162,29 +278,59 @@ export default function PeopleView({ type }) {
                     key: 'role',
                     label: 'Role',
                     render: (p) => (
-                      <Badge tone={p.role === 'admin' ? 'purple' : 'blue'}>
-                        {p.role === 'admin' ? 'Admin' : 'Cashier'}
+                      <Badge tone={p.role === 'ADMIN' ? 'purple' : 'blue'}>
+                        {p.role === 'ADMIN' ? 'Admin' : 'Cashier'}
                       </Badge>
                     ),
                   },
-                  { key: 'shift', label: 'Shift' },
+                  {
+                    key: 'joinedAt',
+                    label: 'Joined',
+                    render: (p) =>
+                      new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'Asia/Colombo',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      }).format(new Date(p.joinedAt)),
+                  },
                 ]),
             {
-              key: 'status',
+              key: 'enabled',
               label: 'Status',
-              render: (p) => <Badge>{p.status}</Badge>,
+              render: (p) => <Badge>{p.enabled ? 'Active' : 'Inactive'}</Badge>,
             },
             {
               key: 'actions',
               label: '',
               render: (p) => (
-                <button
-                  className="icon-button"
-                  aria-label={`Edit ${p.name}`}
-                  onClick={() => open(p)}
-                >
-                  <Pencil size={15} />
-                </button>
+                <div className="flex gap-1">
+                  {customers && (
+                    <button
+                      className="icon-button"
+                      aria-label={`Purchase history for ${p.name}`}
+                      onClick={() => setHistory(p)}
+                    >
+                      <History size={15} />
+                    </button>
+                  )}
+                  <button
+                    className="icon-button"
+                    disabled={saving}
+                    aria-label={`Edit ${p.name}`}
+                    onClick={() => open(p)}
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    disabled={saving || (!customers && p.id === user.id)}
+                    aria-label={`${p.enabled ? 'Deactivate' : 'Activate'} ${p.name}`}
+                    onClick={() => save({ ...p, enabled: !p.enabled })}
+                  >
+                    <Power size={15} />
+                  </button>
+                </div>
               ),
             },
           ]}
@@ -193,32 +339,14 @@ export default function PeopleView({ type }) {
       {editing && (
         <Modal
           title={`${editing.id ? 'Edit' : 'Add'} ${customers ? 'customer' : 'employee'}`}
-          onClose={() => setEditing(null)}
+          onClose={() => {
+            if (!saving) setEditing(null)
+          }}
         >
           <form
             onSubmit={(e) => {
               e.preventDefault()
-              if (!editing.name.trim()) return setError('Please enter a name.')
-              if (
-                people.some(
-                  (p) =>
-                    p.email.toLowerCase() ===
-                      editing.email.trim().toLowerCase() && p.id !== editing.id,
-                )
-              )
-                return setError('This email is already in use.')
-              dispatch(
-                savePerson({
-                  type,
-                  person: {
-                    ...editing,
-                    name: editing.name.trim(),
-                    email: editing.email.trim(),
-                  },
-                }),
-              )
-              toast(`${customers ? 'Customer' : 'Employee'} saved.`)
-              setEditing(null)
+              save(editing)
             }}
           >
             <div className="form-grid">
@@ -226,43 +354,73 @@ export default function PeopleView({ type }) {
                 label="Full name"
                 className="col-span-full"
                 required
-                maxLength={80}
+                maxLength={100}
                 {...field('name')}
               />
               <Field
-                label="Email address"
+                label={customers ? 'Email address (optional)' : 'Email address'}
                 type="email"
-                required
+                required={!customers}
+                maxLength={254}
                 {...field('email')}
               />
-              <Field label="Phone" type="tel" required {...field('phone')} />
+              <Field
+                label="Phone"
+                type="tel"
+                required={customers}
+                maxLength={40}
+                {...field('phone')}
+              />
               {!customers && (
                 <>
                   <Field label="Role">
                     <select {...field('role')}>
-                      <option value="cashier">Cashier</option>
-                      <option value="admin">Admin</option>
+                      <option value="CASHIER">Cashier</option>
+                      <option value="ADMIN">Admin</option>
                     </select>
                   </Field>
-                  <Field label="Shift">
-                    <select {...field('shift')}>
-                      <option>Morning</option>
-                      <option>Evening</option>
-                    </select>
-                  </Field>
+                  <Field
+                    label={
+                      editing.id
+                        ? 'New password (optional)'
+                        : 'Initial password'
+                    }
+                    type="password"
+                    autoComplete="new-password"
+                    required={!editing.id}
+                    minLength={12}
+                    maxLength={72}
+                    {...field('password')}
+                  />
                 </>
               )}
               <Field label="Status">
-                <select {...field('status')}>
-                  <option>Active</option>
-                  <option>Inactive</option>
+                <select
+                  disabled={saving || (!customers && editing.id === user.id)}
+                  value={String(editing.enabled)}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      enabled: e.target.value === 'true',
+                    })
+                  }
+                >
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
                 </select>
               </Field>
             </div>
             {!customers && (
               <p className="mock-note">
-                This updates the team directory only. Login access is not
-                connected in this demo.
+                Use at least 12 characters for new passwords. Role, status,
+                email and password changes require signing in again. Leave the
+                password blank to keep it unchanged.
+              </p>
+            )}
+            {customers && (
+              <p className="mock-note">
+                Inactive customers retain their purchase history and cannot be
+                selected for new sales.
               </p>
             )}
             {error && (
@@ -274,16 +432,26 @@ export default function PeopleView({ type }) {
               <Button
                 variant="secondary"
                 type="button"
+                disabled={saving}
                 onClick={() => setEditing(null)}
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                Save {customers ? 'customer' : 'employee'}
+              <Button type="submit" disabled={saving}>
+                {saving
+                  ? 'Saving…'
+                  : `Save ${customers ? 'customer' : 'employee'}`}
               </Button>
             </div>
           </form>
         </Modal>
+      )}
+      {history && (
+        <CustomerHistory
+          key={history.id}
+          customer={history}
+          onClose={() => setHistory(null)}
+        />
       )}
     </>
   )

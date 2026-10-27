@@ -77,6 +77,8 @@ export default function Receipt() {
             </dd>
             <dt>Cashier</dt>
             <dd>{data.sale.userName}</dd>
+            <dt>Customer</dt>
+            <dd>{data.sale.customerName || 'Guest'}</dd>
             <dt>Payment</dt>
             <dd>{paymentLabel(data.sale.payment)}</dd>
           </dl>

@@ -12,7 +12,11 @@ public record CheckoutRequest(
         @NotNull @Size(min = 1, max = 100) List<@NotNull @Valid Item> items,
         @NotNull @DecimalMin("0") @Digits(integer = 10, fraction = 2) BigDecimal discount,
         @NotNull @DecimalMin("0") @DecimalMax("100") @Digits(integer = 3, fraction = 2) BigDecimal expectedTaxRate,
-        @NotNull PaymentMethod payment) {
+        @NotNull PaymentMethod payment,
+        @Size(min=1, max=36) String customerId) {
+    public CheckoutRequest(String idempotencyKey, List<Item> items, BigDecimal discount, BigDecimal expectedTaxRate, PaymentMethod payment) {
+        this(idempotencyKey, items, discount, expectedTaxRate, payment, null);
+    }
     public record Item(@NotBlank @Size(max = 36) String productId,
             @NotNull @Min(1) @Max(1000000) @JsonDeserialize(using = WholeQuantityDeserializer.class) Long quantity,
             @NotNull @DecimalMin("0") @Digits(integer = 10, fraction = 2) BigDecimal expectedUnitPrice) {}

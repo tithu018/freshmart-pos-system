@@ -14,6 +14,7 @@ import cart, {
   loadPOS,
   setDiscount,
   setPayment,
+  setCustomer,
   submitCheckout,
   restoreCheckout,
   calculateTotals,
@@ -92,6 +93,41 @@ test('POS starts empty, loads actual product prices/stock and supports cart chan
   assert.deepEqual(state.getState().cart.items, [])
   state.dispatch(addItem({ ...product, stock: 0 }))
   assert.deepEqual(state.getState().cart.items, [])
+})
+
+test('optional customer is included in checkout and cleared after success; guests omit it', async () => {
+  const state = store()
+  let body
+  respond(config => { body = JSON.parse(config.data); return { ...sale, customerId: 'c1' } })
+  state.dispatch(addItem(product))
+  state.dispatch(setCustomer({ id: 'c1', name: 'Customer', phone: '0771234567' }))
+  await state.dispatch(submitCheckout()).unwrap()
+  assert.equal(body.customerId, 'c1')
+  assert.equal(state.getState().cart.customer, null)
+  assert.equal(state.getState().cart.receipt.customerId, 'c1')
+  state.dispatch(addItem(product))
+  await state.dispatch(submitCheckout()).unwrap()
+  assert.equal('customerId' in body, false)
+})
+
+test('pending customer selection is frozen and restored with the identical retry payload', async () => {
+  const state = store()
+  const requests = []
+  let first = true
+  respond(config => { requests.push(config.data); if (first) throw new Error('lost response'); return sale })
+  state.dispatch(addItem(product))
+  state.dispatch(setCustomer({ id: 'c1', name: 'Customer' }))
+  await state.dispatch(submitCheckout())
+  state.dispatch(setCustomer({ id: 'c2', name: 'Other' }))
+  assert.equal(state.getState().cart.customer.id, 'c1')
+  const snapshot = readPendingCheckout('u1')
+  assert.equal(snapshot.request.customerId, 'c1')
+  const restored = store()
+  restored.dispatch(restoreCheckout(snapshot))
+  assert.equal(restored.getState().cart.customer.name, 'Customer')
+  first = false
+  await restored.dispatch(submitCheckout()).unwrap()
+  assert.equal(requests[0], requests[1])
 })
 test('totals use a fixed amount discount before tax and round half-up to cents', () => {
   assert.deepEqual(

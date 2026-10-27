@@ -1,10 +1,7 @@
-import { createSlice, nanoid } from '@reduxjs/toolkit'
-import { customers, employees } from '../../data/mockData'
+import { createSlice } from '@reduxjs/toolkit'
 const managementSlice = createSlice({
   name: 'management',
   initialState: {
-    customers,
-    employees,
     settings: {
       storeName: 'FreshMart',
       email: 'hello@freshmart.com',
@@ -16,19 +13,10 @@ const managementSlice = createSlice({
     },
   },
   reducers: {
-    savePerson: (state, { payload: { type, person } }) => {
-      const existing = state[type].find((item) => item.id === person.id)
-      if (existing) Object.assign(existing, person)
-      else
-        state[type].unshift({
-          ...person,
-          id: `${type === 'customers' ? 'CUS' : 'EMP'}-${nanoid(6)}`,
-        })
-    },
     saveSettings: (state, { payload }) => {
       Object.assign(state.settings, payload)
     },
   },
 })
-export const { savePerson, saveSettings } = managementSlice.actions
+export const { saveSettings } = managementSlice.actions
 export default managementSlice.reducer

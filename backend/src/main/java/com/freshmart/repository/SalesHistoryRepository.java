@@ -15,7 +15,9 @@ import org.springframework.stereotype.Repository;
 public class SalesHistoryRepository {
     private final EntityManager em;
     public SalesHistoryRepository(EntityManager em) { this.em = em; }
-    public record Filter(String query, Instant from, Instant until, PaymentMethod payment, String cashierId) {}
+    public record Filter(String query, Instant from, Instant until, PaymentMethod payment, String cashierId, String customerId) {
+        public Filter(String query, Instant from, Instant until, PaymentMethod payment, String cashierId) { this(query, from, until, payment, cashierId, null); }
+    }
 
     private Predicate[] where(From<?, Sale> sale, CriteriaBuilder cb, Filter filter) {
         var predicates = new ArrayList<Predicate>();
@@ -27,6 +29,7 @@ public class SalesHistoryRepository {
         if (filter.until() != null) predicates.add(cb.lessThan(sale.get("occurredAt"), filter.until()));
         if (filter.payment() != null) predicates.add(cb.equal(sale.get("payment"), filter.payment()));
         if (filter.cashierId() != null) predicates.add(cb.equal(sale.get("userId"), filter.cashierId()));
+        if (filter.customerId() != null) predicates.add(cb.equal(sale.get("customerId"), filter.customerId()));
         return predicates.toArray(Predicate[]::new);
     }
     public List<SalesPage.Row> page(Filter filter, int page, int size, String sort, boolean ascending) {
