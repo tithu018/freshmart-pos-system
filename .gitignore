@@ -18,3 +18,20 @@ target/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Terraform working data, plans and private configuration
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfplan.*
+*.tfvars
+*.tfvars.json
+*.backend.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# Keep provider locks and safe *.example files in version control.

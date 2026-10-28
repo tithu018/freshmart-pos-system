@@ -1,0 +1,47 @@
+# Copy to terraform.tfvars (ignored). Replace the EXAMPLE account/role with yours.
+# No AWS access keys, passwords, session tokens or JWT secrets belong here.
+aws_account_id = "123456789012"
+aws_region     = "ap-south-1"
+project        = "freshmart"
+environment    = "dev"
+availability_zones = ["ap-south-1a", "ap-south-1b"]
+vpc_cidr       = "10.42.0.0/16"
+
+# Reuse an EXISTING assumed role in the target account. Do not use an STS ARN.
+cluster_admin_role_arns = ["arn:aws:iam::123456789012:role/REPLACE_WITH_EXISTING_EKS_ADMIN_ROLE"]
+eks_version = "1.36"
+eks_public_access = false
+eks_public_access_cidrs = []
+eks_private_access_cidrs = []
+# Optional public API: set true above and use your actual administrator /32 below.
+# eks_public_access_cidrs = ["203.0.113.10/32"] # Documentation-only IP; replace it.
+# Private API: configure a real VPN/runner network and its allowed source CIDR.
+
+# One NAT has lower fixed cost but shared-AZ failure and cross-AZ transfer risk.
+# For better availability use "per_az" (two paid NAT gateways).
+nat_gateway_mode = "single"
+node_groups = {
+  general = {
+    instance_types = ["t3.medium"] # x86_64 only for the selected AL2023 AMI
+    capacity_type  = "ON_DEMAND"   # SPOT is optional and interruptible
+    min_size       = 1
+    desired_size   = 2
+    max_size       = 3
+    disk_size      = 20
+  }
+}
+
+# Networking only: no ALB/controller/listener is deployed in Task 12.
+alb_ingress_cidrs = [] # Later: approved HTTPS clients, or 0.0.0.0/0 for a public site.
+
+db_name                  = "freshmart_pos"
+db_master_username       = "freshmart_admin"
+db_instance_class        = "db.t4g.micro"
+db_multi_az              = false # Development cost choice; enable for production HA.
+db_allocated_storage     = 20
+db_max_allocated_storage = 100
+db_deletion_protection   = true
+# Choose a unique name before a future decommission if the default snapshot exists.
+db_final_snapshot_identifier = null
+
+tags = { Owner = "FreshMart" }
