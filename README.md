@@ -19,6 +19,23 @@ Task 9 adds employee account management, persisted profiles, customers, purchase
 and optional customer selection at checkout. See [people management and testing](docs/people.md).
 Task 10 verifies Tasks 1–9, hardens validation and error handling, and adds isolated
 PostgreSQL and React component tests. See [test results and reproduction](docs/testing.md).
+Task 11 adds Docker, Compose and GitHub Actions tests/builds with GHCR image
+publishing. See [Docker setup, CI and verification](docs/docker.md).
+
+## Run with Docker
+
+Start Docker Desktop (Linux containers). From the repository root in PowerShell:
+
+```powershell
+.\devops\docker\Initialize-DockerEnvironment.ps1
+docker compose up --build -d
+```
+
+The first command is a one-time setup that creates an ignored root `.env` with
+random secrets. Open <http://localhost:3000> once `docker compose ps` shows all
+services healthy. Use the initial account passwords from that file. Docker uses
+its own persistent database volume and preserves your native development data.
+See [the Docker guide](docs/docker.md) for configuration and shutdown commands.
 
 ## Requirements
 
@@ -163,8 +180,9 @@ Task 8 implements database-backed dashboards, sales analytics and report CSV exp
 Task 9 implements employee accounts, profiles, customers and linked purchase history.
 Settings remains a local demo. Card payments are simulated;
 Task 10 adds reliability fixes and regression coverage without new business features.
-Refunds, supplier management, multi-store features and Task 11 are not implemented.
-Docker, Docker Compose, GitHub Actions, AWS, and Kubernetes remain unchanged.
+Task 11 adds Docker images, Compose and CI/CD image publishing without changing
+the business UI. Refunds, supplier management, multi-store features, AWS,
+Kubernetes and Task 12 are not implemented.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.
 Commit the `.env.example` files and frontend lockfile so others can reproduce

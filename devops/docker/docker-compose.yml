@@ -1,0 +1,84 @@
+x-logging: &bounded-logs
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    logging: *bounded-logs
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-freshmart_pos}
+      POSTGRES_USER: ${DB_USERNAME:-freshmart}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the root .env file}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt: [no-new-privileges:true]
+
+  backend:
+    logging: *bounded-logs
+    build:
+      context: ../../backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: bootstrap
+      SERVER_PORT: 8081
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-freshmart_pos}
+      DB_USERNAME: ${DB_USERNAME:-freshmart}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the root .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set a random base64 JWT_SECRET in the root .env file}
+      JWT_TTL: ${JWT_TTL:-PT1H}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:3000}
+      BOOTSTRAP_USERS_ENABLED: ${BOOTSTRAP_USERS_ENABLED:-false}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_CASHIER_PASSWORD: ${BOOTSTRAP_CASHIER_PASSWORD:-}
+      CHECKOUT_TAX_RATE: ${CHECKOUT_TAX_RATE:-0}
+      STORE_TIME_ZONE: ${STORE_TIME_ZONE:-Asia/Colombo}
+      STORE_NAME: ${STORE_NAME:-FreshMart}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [web, database]
+    read_only: true
+    tmpfs: ['/tmp:size=128m,mode=1777']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    stop_grace_period: 30s
+
+  frontend:
+    logging: *bounded-logs
+    build:
+      context: ../../frontend
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-3000}:8080'
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [web]
+    read_only: true
+    tmpfs: ['/tmp:size=32m,mode=1777']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+
+volumes:
+  postgres_data:
+
+networks:
+  web:
+  database:
+    internal: true

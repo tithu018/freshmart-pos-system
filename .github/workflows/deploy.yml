@@ -1,0 +1,76 @@
+name: FreshMart CI and container publishing
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frontend:
+    uses: ./.github/workflows/frontend-ci.yml
+  backend:
+    uses: ./.github/workflows/backend-ci.yml
+  compose:
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Create isolated configuration
+        shell: pwsh
+        run: ./devops/docker/Initialize-DockerEnvironment.ps1 -DatabaseName freshmart_docker_test -ProjectName freshmart-ci
+      - name: Build and start all services
+        run: docker compose up --build -d --wait --wait-timeout 180
+      - name: Test authentication, checkout and inventory
+        run: python3 devops/docker/smoke.py --env-file .env --state-file /tmp/freshmart-smoke.json
+      - name: Recreate containers without removing database volume
+        run: |
+          sed -i 's/^BOOTSTRAP_USERS_ENABLED=true$/BOOTSTRAP_USERS_ENABLED=false/' .env
+          docker compose down
+          docker compose up -d --wait --wait-timeout 180
+      - name: Verify persisted transaction and stock
+        run: python3 devops/docker/smoke.py --env-file .env --state-file /tmp/freshmart-smoke.json --verify-existing
+      - name: Show service status
+        if: always()
+        run: docker compose ps -a
+      - name: Stop isolated CI containers
+        if: always()
+        run: docker compose down --volumes
+  images:
+    needs: [frontend, backend, compose]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component: [frontend, backend]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Image name
+        id: image
+        env:
+          REPOSITORY: ${{ github.repository }}
+          COMPONENT: ${{ matrix.component }}
+        run: echo "name=ghcr.io/${REPOSITORY,,}-${COMPONENT}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ./${{ matrix.component }}
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}

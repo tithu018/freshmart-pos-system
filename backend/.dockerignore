@@ -1,0 +1,9 @@
+**/.env
+**/.env.*
+target
+.git
+.idea
+*.log
+scripts
+README.md
+Dockerfile

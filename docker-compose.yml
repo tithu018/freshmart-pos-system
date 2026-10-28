@@ -1,0 +1,3 @@
+name: ${COMPOSE_PROJECT_NAME:-freshmart}
+include:
+  - path: ./devops/docker/docker-compose.yml

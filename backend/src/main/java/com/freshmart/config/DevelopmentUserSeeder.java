@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@Profile("dev")
+@Profile({"dev", "bootstrap"})
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true")
 public class DevelopmentUserSeeder implements ApplicationRunner {
     private final UserRepository users;
@@ -41,7 +41,7 @@ public class DevelopmentUserSeeder implements ApplicationRunner {
     private void seed(String id, String name, String email, String password, Role role, String phone) {
         if (users.existsByEmail(email)) return;
         if (password.length() < 12 || password.getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new IllegalStateException("Development account passwords must contain at least 12 characters and at most 72 UTF-8 bytes.");
+            throw new IllegalStateException("Initial account passwords must contain at least 12 characters and at most 72 UTF-8 bytes.");
         }
         users.save(new User(id, name, email, passwords.encode(password), role, phone));
     }

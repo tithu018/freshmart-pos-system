@@ -1,0 +1,10 @@
+**/.env
+**/.env.*
+node_modules
+dist
+.vite
+coverage
+.git
+*.log
+README.md
+Dockerfile
