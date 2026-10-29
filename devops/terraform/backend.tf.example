@@ -1,0 +1,5 @@
+# OPTIONAL: copy to backend.tf before initializing an existing remote state bucket.
+# This example is not loaded by Terraform and creates no bucket.
+terraform {
+  backend "s3" {}
+}

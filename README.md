@@ -21,6 +21,9 @@ Task 10 verifies Tasks 1–9, hardens validation and error handling, and adds is
 PostgreSQL and React component tests. See [test results and reproduction](docs/testing.md).
 Task 11 adds Docker, Compose and GitHub Actions tests/builds with GHCR image
 publishing. See [Docker setup, CI and verification](docs/docker.md).
+Task 12 defines Terraform modules for AWS networking, EKS and private RDS on the
+`devops` branch. See [infrastructure, validation and planning](devops/terraform/README.md).
+The configuration has not been applied; no AWS resources have been created.
 
 ## Run with Docker
 
@@ -181,8 +184,10 @@ Task 9 implements employee accounts, profiles, customers and linked purchase his
 Settings remains a local demo. Card payments are simulated;
 Task 10 adds reliability fixes and regression coverage without new business features.
 Task 11 adds Docker images, Compose and CI/CD image publishing without changing
-the business UI. Refunds, supplier management, multi-store features, AWS,
-Kubernetes and Task 12 are not implemented.
+the business UI. Task 12 defines AWS infrastructure without provisioning it.
+Task 13 adds [local Kubernetes/Minikube deployment](devops/kubernetes/README.md)
+with PowerShell setup and resilience tests. Refunds, supplier management,
+multi-store features, Helm and AWS EKS application deployment are not implemented.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.
 Commit the `.env.example` files and frontend lockfile so others can reproduce
