@@ -44,3 +44,7 @@ devops/kubernetes/*secret*.local.*
 devops/helm/.local/
 devops/helm/values-*.local.yaml
 devops/helm/*.tgz
+
+# Jenkins credentials, source snapshots and downloaded pipeline reports
+devops/jenkins/.local/
+devops/jenkins/__pycache__/

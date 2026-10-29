@@ -188,6 +188,8 @@ the business UI. Task 12 defines AWS infrastructure without provisioning it.
 Task 13 adds [local Kubernetes/Minikube deployment](devops/kubernetes/README.md)
 with PowerShell setup and resilience tests. Task 14 adds [Helm charts and EKS
 deployment preparation](devops/helm/README.md), with tested local upgrade/rollback.
+Task 15 adds [local Jenkins CI and Trivy security reports](devops/jenkins/README.md)
+without replacing GitHub Actions or deploying the application.
 Refunds, supplier management, multi-store features and live AWS EKS application
 deployment are not implemented.
 

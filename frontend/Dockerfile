@@ -9,6 +9,9 @@ ENV VITE_API_BASE_URL=/api
 RUN npm test && npm run build
 
 FROM nginx:stable-alpine AS runtime
+# Apply available Alpine security fixes before dropping privileges. Trivy gates
+# the resulting image; the moving upstream base may lag its package repository.
+RUN apk upgrade --no-cache brotli-libs curl libcurl
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /build/dist /usr/share/nginx/html
 USER nginx

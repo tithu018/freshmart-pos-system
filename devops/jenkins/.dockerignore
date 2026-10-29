@@ -1,0 +1,5 @@
+.local
+README.md
+TEST-RESULTS.md
+*.ps1
+*.py

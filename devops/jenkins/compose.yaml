@@ -1,0 +1,74 @@
+name: freshmart-jenkins
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8085:8080"
+    environment:
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=false -Xms128m -Xmx512m
+    volumes:
+      - jenkins-home:/var/jenkins_home
+      - agent-secret:/run/agent-secret
+      - ./.local/source:/opt/freshmart-source:ro
+    secrets:
+      - admin_password
+    healthcheck:
+      test: [CMD-SHELL, "curl -fsS http://localhost:8080/login >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    mem_limit: 1g
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    restart: unless-stopped
+  docker:
+    image: docker:29-dind
+    # Required by Docker-in-Docker. Only run trusted local source on this agent.
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    volumes:
+      - docker-certs:/certs/client
+      - docker-data:/var/lib/docker
+    healthcheck:
+      test: [CMD, docker, info]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    mem_limit: 2g
+    restart: unless-stopped
+  agent:
+    build:
+      context: .
+      dockerfile: agent.Dockerfile
+    environment:
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_TLS_VERIFY: "1"
+      DOCKER_CERT_PATH: /certs/client
+      TRIVY_CACHE_DIR: /home/jenkins/agent/.cache/trivy
+    volumes:
+      - agent-work:/home/jenkins/agent
+      - agent-secret:/run/agent-secret:ro
+      - docker-certs:/certs/client:ro
+      - ./.local/source:/opt/freshmart-source:ro
+    depends_on:
+      jenkins:
+        condition: service_healthy
+      docker:
+        condition: service_healthy
+    mem_limit: 2g
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    restart: unless-stopped
+secrets:
+  admin_password:
+    file: ./.local/admin-password.txt
+volumes:
+  jenkins-home:
+  agent-secret:
+  docker-certs:
+  docker-data:
+  agent-work:

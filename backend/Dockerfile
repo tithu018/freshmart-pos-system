@@ -7,7 +7,8 @@ COPY src src
 RUN --mount=type=cache,target=/root/.m2 sh ./mvnw -B -ntp verify
 
 FROM eclipse-temurin:17-jre-alpine AS runtime
-RUN apk add --no-cache curl && addgroup -S -g 10001 freshmart \
+RUN apk add --no-cache curl && apk upgrade --no-cache brotli-libs \
+    && addgroup -S -g 10001 freshmart \
     && adduser -S -u 10001 -G freshmart freshmart
 WORKDIR /app
 COPY --from=build --chown=10001:10001 /build/target/freshmart-pos-backend-*.jar app.jar

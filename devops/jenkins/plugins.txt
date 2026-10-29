@@ -1,0 +1,6 @@
+workflow-aggregator:608.v67378e9d3db_1
+git:5.11.0
+credentials-binding:728.v902a_273b_8947
+junit:1454.ve02e195294c8
+htmlpublisher:429
+timestamper:1.30
