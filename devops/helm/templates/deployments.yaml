@@ -1,0 +1,144 @@
+{{- range $component := list "frontend" "backend" }}
+{{- $settings := index $.Values $component }}
+{{- $backend := eq $component "backend" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "freshmart.name" $ }}-{{ $component }}
+  labels:
+    {{- include "freshmart.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ $settings.replicaCount }}
+  revisionHistoryLimit: 3
+  minReadySeconds: 5
+  progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      {{- toYaml $.Values.rollingUpdate | nindent 6 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $.Chart.Name }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $.Chart.Name }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/component: {{ $component }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") $ | sha256sum }}
+        {{- if not $backend }}
+        checksum/nginx: {{ include (print $.Template.BasePath "/nginx-configmap.yaml") $ | sha256sum }}
+        {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 40
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ ternary 10001 101 $backend }}
+        runAsGroup: {{ ternary 10001 101 $backend }}
+        fsGroup: {{ ternary 10001 101 $backend }}
+        seccompProfile: {type: RuntimeDefault}
+      {{- if $.Values.spreadAcrossZones }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ $.Release.Name }}
+              app.kubernetes.io/component: {{ $component }}
+      {{- end }}
+      {{- if $backend }}
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ $.Values.databaseWait.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [sh, -c, 'until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME" -d "$DB_NAME"; do sleep 2; done']
+          envFrom:
+            - configMapRef: {name: {{ include "freshmart.name" $ }}-config}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            {{- toYaml $.Values.databaseWait.resources | nindent 12 }}
+          {{- if eq $.Values.database.tls.mode "verify-full" }}
+          volumeMounts:
+            - {name: rds-ca, mountPath: /etc/freshmart/rds-ca, readOnly: true}
+          {{- end }}
+      {{- end }}
+      containers:
+        - name: {{ $component }}
+          image: {{ include "freshmart.image" $settings.image | quote }}
+          imagePullPolicy: {{ $settings.image.pullPolicy }}
+          {{- if not $backend }}
+          command: [/bin/sh, -c]
+          args:
+            - >-
+              until nslookup {{ include "freshmart.name" $ }}-backend.{{ $.Release.Namespace }}.svc.{{ $.Values.clusterDomain }}. >/dev/null 2>&1; do sleep 2; done;
+              exec nginx -g 'daemon off;'
+          {{- else }}
+          envFrom:
+            - configMapRef: {name: {{ include "freshmart.name" $ }}-config}
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.credentials.existingSecret }}
+                  key: {{ $.Values.credentials.databasePasswordKey }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.credentials.existingSecret }}
+                  key: {{ $.Values.credentials.jwtSecretKey }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ ternary 8081 8080 $backend }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            {{- toYaml $settings.resources | nindent 12 }}
+          {{- range $probe := list "startup" "readiness" "liveness" }}
+          {{ $probe }}Probe:
+            httpGet:
+              path: {{ ternary "/api/auth/csrf" "/health" $backend }}
+              port: http
+            {{- toYaml (index $settings.probes $probe) | nindent 12 }}
+          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [sh, -c, {{ ternary "sleep 5" "sleep 5; nginx -s quit" $backend | quote }}]
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            {{- if not $backend }}
+            - {name: nginx, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            {{- else if eq $.Values.database.tls.mode "verify-full" }}
+            - {name: rds-ca, mountPath: /etc/freshmart/rds-ca, readOnly: true}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: {{ ternary "128Mi" "32Mi" $backend }}}
+        {{- if not $backend }}
+        - name: nginx
+          configMap: {name: {{ include "freshmart.name" $ }}-nginx}
+        {{- else if eq $.Values.database.tls.mode "verify-full" }}
+        - name: rds-ca
+          configMap:
+            name: {{ $.Values.database.tls.existingCaConfigMap }}
+            items:
+              - {key: {{ $.Values.database.tls.caKey }}, path: bundle.pem}
+        {{- end }}
+{{- end }}

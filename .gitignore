@@ -39,3 +39,8 @@ override.tf.json
 # Kubernetes local credentials and test state (never commit generated Secrets)
 devops/kubernetes/.local/
 devops/kubernetes/*secret*.local.*
+
+# Helm local overrides, rendered output and private test artifacts
+devops/helm/.local/
+devops/helm/values-*.local.yaml
+devops/helm/*.tgz

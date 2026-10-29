@@ -1,0 +1,22 @@
+# Install into the existing Task 13 namespace: freshmart.
+# Reuse its PostgreSQL Service, PVC and Secret without Helm adopting them.
+environment: minikube
+credentials:
+  existingSecret: freshmart-secrets
+database:
+  host: postgres
+  name: freshmart_kubernetes_test
+  username: freshmart
+  tls:
+    mode: disable
+app:
+  frontendOrigin: http://localhost:3001
+  secureCookies: false
+frontend:
+  replicaCount: 1
+  image: {repository: freshmart-frontend, tag: task13, pullPolicy: IfNotPresent}
+backend:
+  replicaCount: 1
+  image: {repository: freshmart-backend, tag: task13, pullPolicy: IfNotPresent}
+ingress:
+  enabled: false

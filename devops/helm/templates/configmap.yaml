@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "freshmart.name" . }}-config
+  labels:
+    {{- include "freshmart.labels" . | nindent 4 }}
+data:
+  SPRING_PROFILES_ACTIVE: prod
+  SERVER_PORT: "8081"
+  DB_HOST: {{ .Values.database.host | quote }}
+  DB_PORT: {{ .Values.database.port | quote }}
+  DB_NAME: {{ .Values.database.name | quote }}
+  DB_USERNAME: {{ .Values.database.username | quote }}
+  SPRING_DATASOURCE_URL: {{ printf "jdbc:postgresql://%s:%v/%s?sslmode=%s%s" .Values.database.host .Values.database.port .Values.database.name .Values.database.tls.mode (ternary "&sslrootcert=/etc/freshmart/rds-ca/bundle.pem" "" (eq .Values.database.tls.mode "verify-full")) | quote }}
+  PGSSLMODE: {{ .Values.database.tls.mode | quote }}
+  {{- if eq .Values.database.tls.mode "verify-full" }}
+  PGSSLROOTCERT: /etc/freshmart/rds-ca/bundle.pem
+  {{- end }}
+  AUTH_COOKIE_SECURE: {{ .Values.app.secureCookies | quote }}
+  FRONTEND_ORIGINS: {{ .Values.app.frontendOrigin | quote }}
+  BOOTSTRAP_USERS_ENABLED: "false"
+  JWT_TTL: {{ .Values.app.jwtTtl | quote }}
+  STORE_TIME_ZONE: {{ .Values.app.storeTimeZone | quote }}
+  STORE_NAME: {{ .Values.app.storeName | quote }}
+  CHECKOUT_TAX_RATE: {{ .Values.app.checkoutTaxRate | quote }}
+  SERVER_SHUTDOWN: graceful
+  SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: 20s

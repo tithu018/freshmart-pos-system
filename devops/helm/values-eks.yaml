@@ -1,0 +1,39 @@
+# OFFLINE PREPARATION ONLY. Replace every placeholder in a private override.
+# No AWS resources/controllers/credentials are created by this values file.
+environment: eks
+credentials:
+  existingSecret: freshmart-runtime
+database:
+  host: replace-rds-endpoint.example.invalid
+  port: 5432
+  name: freshmart_pos
+  username: freshmart_app
+  tls:
+    mode: verify-full
+    existingCaConfigMap: freshmart-rds-ca
+    caKey: bundle.pem
+app:
+  frontendOrigin: https://freshmart.example.invalid
+  secureCookies: true
+frontend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/replace-owner/replace-repository-frontend
+    tag: replace-immutable-tag
+backend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/replace-owner/replace-repository-backend
+    tag: replace-immutable-tag
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+spreadAcrossZones: true
+ingress:
+  enabled: true
+  host: freshmart.example.invalid
+  certificateArn: arn:aws:acm:ap-south-1:000000000000:certificate/00000000-0000-0000-0000-000000000000
+  securityGroupId: sg-00000000000000000
+  subnetIds: [subnet-00000000000000000, subnet-00000000000000001]
+  # Task 12 permits HTTPS 443 only. No HTTP 80 listener or NodePort is needed.
+  scheme: internet-facing

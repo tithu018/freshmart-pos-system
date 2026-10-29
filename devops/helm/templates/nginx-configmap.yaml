@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "freshmart.name" . }}-nginx
+  labels:
+    {{- include "freshmart.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    worker_processes auto;
+    pid /tmp/nginx.pid;
+    error_log /dev/stderr warn;
+    events { worker_connections 1024; }
+    http {
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+        access_log /dev/stdout;
+        sendfile on;
+        server_tokens off;
+        client_body_temp_path /tmp/client_body;
+        proxy_temp_path /tmp/proxy;
+        fastcgi_temp_path /tmp/fastcgi;
+        uwsgi_temp_path /tmp/uwsgi;
+        scgi_temp_path /tmp/scgi;
+        {{- if .Values.ingress.enabled }}
+        # ALB terminates TLS; Task 12 restricts public ingress to the ALB SG.
+        map $http_x_forwarded_proto $forwarded_scheme {
+            default $scheme;
+            https https;
+        }
+        {{- end }}
+        server {
+            listen 8080;
+            root /usr/share/nginx/html;
+            index index.html;
+            add_header X-Content-Type-Options nosniff always;
+            add_header X-Frame-Options DENY always;
+            add_header Referrer-Policy same-origin always;
+            {{- if .Values.ingress.enabled }}
+            add_header Strict-Transport-Security "max-age=31536000" always;
+            {{- end }}
+            location = /health {
+                access_log off;
+                default_type text/plain;
+                return 200 'healthy\n';
+            }
+            location /api/ {
+                proxy_pass http://{{ include "freshmart.name" . }}-backend:8081;
+                proxy_http_version 1.1;
+                proxy_set_header Host $http_host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto {{ ternary "$forwarded_scheme" "$scheme" .Values.ingress.enabled }};
+                proxy_connect_timeout 5s;
+                proxy_read_timeout 60s;
+                proxy_cache off;
+            }
+            location /assets/ {
+                expires 1y;
+                try_files $uri =404;
+            }
+            location / {
+                add_header Cache-Control 'no-cache';
+                add_header X-Content-Type-Options nosniff always;
+                add_header X-Frame-Options DENY always;
+                add_header Referrer-Policy same-origin always;
+                {{- if .Values.ingress.enabled }}
+                add_header Strict-Transport-Security "max-age=31536000" always;
+                {{- end }}
+                try_files $uri $uri/ /index.html;
+            }
+        }
+    }

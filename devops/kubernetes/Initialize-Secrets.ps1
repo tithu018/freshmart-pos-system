@@ -2,7 +2,7 @@
 param()
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-if ((git -C $repo branch --show-current) -ne 'devops') { throw 'Stop: work only on devops.' }
+if ((git -C $repo branch --show-current) -ne 'main') { throw 'Stop: work only on main.' }
 $local = Join-Path $PSScriptRoot '.local'
 $path = Join-Path $local '.env'
 if (Test-Path -LiteralPath $path) { throw 'Local credentials already exist; they will not be replaced.' }

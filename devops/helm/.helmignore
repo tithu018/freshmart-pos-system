@@ -1,0 +1,7 @@
+.local/
+values-*.local.yaml
+*.tgz
+*.ps1
+*.py
+TEST-RESULTS.md
+__pycache__/

@@ -2,7 +2,7 @@
 
 This is a local Windows/Docker Desktop deployment. It reuses the Task 11 images
 and all existing application code. It does not deploy Terraform, AWS, EKS or Helm.
-Work only on the `devops` Git branch. Scripts do not commit, push or merge.
+Following the Task 13 merge, work only on the `main` Git branch. Scripts do not commit, push or merge.
 
 ## Prerequisites and deployment
 
@@ -13,7 +13,7 @@ the 4 CPU / 4 GiB Minikube node plus image builds. Start Docker Desktop first.
 Run from the repository root in PowerShell:
 
 ```powershell
-if ((git branch --show-current) -ne 'devops') { throw 'Stop: work only on devops.' }
+if ((git branch --show-current) -ne 'main') { throw 'Stop: work only on main.' }
 docker info
 minikube version
 kubectl version --client

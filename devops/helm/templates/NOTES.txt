@@ -1,0 +1,12 @@
+FreshMart {{ .Release.Name }} is installed in namespace {{ .Release.Namespace }}.
+PostgreSQL, PVCs and credentials are external to this release and are never adopted.
+{{ if eq .Values.environment "minikube" }}
+Browser access (keep this terminal open):
+  kubectl --context=freshmart -n {{ .Release.Namespace }} port-forward service/{{ include "freshmart.name" . }}-frontend 3001:8080 --address=127.0.0.1
+  http://localhost:3001
+Or use devops/helm/Open-FreshMartHelm.ps1 to reconnect after Pod replacement.
+{{ else }}
+Prepared HTTPS endpoint: https://{{ .Values.ingress.host }}
+An installed AWS Load Balancer Controller, validated ACM certificate, DNS, private
+RDS access, runtime Secret and RDS CA ConfigMap are prerequisites; Helm does not create them.
+{{ end }}

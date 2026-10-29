@@ -1,0 +1,24 @@
+{{- if eq .Values.database.tls.mode "verify-full" -}}
+{{- $_ := required "database.tls.existingCaConfigMap is required with verify-full" .Values.database.tls.existingCaConfigMap -}}
+{{- end -}}
+{{- if eq .Values.environment "eks" -}}
+{{- if or (not .Values.app.secureCookies) (ne .Values.database.tls.mode "verify-full") (not .Values.ingress.enabled) -}}
+{{- fail "EKS requires Secure cookies, verify-full RDS TLS and HTTPS ingress" -}}
+{{- end -}}
+{{- end -}}
+{{- if .Values.ingress.enabled -}}
+{{- $_ := required "ingress.host is required" .Values.ingress.host -}}
+{{- $_ := required "ingress.certificateArn is required" .Values.ingress.certificateArn -}}
+{{- $_ := required "ingress.securityGroupId is required" .Values.ingress.securityGroupId -}}
+{{- if lt (len .Values.ingress.subnetIds) 2 -}}{{ fail "ingress requires at least two subnet IDs" }}{{- end -}}
+{{- if or (not .Values.app.secureCookies) (ne .Values.app.frontendOrigin (printf "https://%s" .Values.ingress.host)) -}}
+{{- fail "HTTPS ingress requires Secure cookies and frontendOrigin matching its HTTPS host" -}}
+{{- end -}}
+{{- end -}}
+{{- if .Values.podDisruptionBudget.enabled -}}
+{{- range $component := list "frontend" "backend" -}}
+{{- if ge (int $.Values.podDisruptionBudget.minAvailable) (int (index $.Values $component).replicaCount) -}}
+{{- fail "PDB minAvailable must be lower than each component replicaCount" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}

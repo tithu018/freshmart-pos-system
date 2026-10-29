@@ -1,0 +1,72 @@
+# The chart NEVER owns PostgreSQL, a PVC, a Namespace or credential Secrets.
+environment: minikube
+clusterDomain: cluster.local
+imagePullSecrets: []
+credentials:
+  existingSecret: freshmart-secrets
+  databasePasswordKey: DB_PASSWORD
+  jwtSecretKey: JWT_SECRET
+database:
+  host: postgres
+  port: 5432
+  name: freshmart_kubernetes_test
+  username: freshmart
+  tls:
+    mode: disable
+    existingCaConfigMap: ""
+    caKey: bundle.pem
+app:
+  frontendOrigin: http://localhost:3001
+  secureCookies: false
+  jwtTtl: PT1H
+  storeTimeZone: Asia/Colombo
+  storeName: FreshMart
+  checkoutTaxRate: "0"
+frontend:
+  replicaCount: 1
+  image:
+    repository: freshmart-frontend
+    tag: task13
+    digest: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests: {cpu: 50m, memory: 32Mi}
+    limits: {cpu: 500m, memory: 128Mi}
+  probes:
+    startup: {periodSeconds: 3, timeoutSeconds: 3, failureThreshold: 40}
+    readiness: {periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3}
+    liveness: {periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6}
+backend:
+  replicaCount: 1
+  image:
+    repository: freshmart-backend
+    tag: task13
+    digest: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests: {cpu: 250m, memory: 384Mi}
+    limits: {cpu: "2", memory: 768Mi}
+  probes:
+    startup: {periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 60}
+    readiness: {periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3}
+    liveness: {periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6}
+databaseWait:
+  image: postgres:17-alpine
+  resources:
+    requests: {cpu: 10m, memory: 16Mi}
+    limits: {cpu: 100m, memory: 32Mi}
+rollingUpdate:
+  maxUnavailable: 0
+  maxSurge: 1
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+spreadAcrossZones: false
+ingress:
+  enabled: false
+  host: ""
+  certificateArn: ""
+  securityGroupId: ""
+  subnetIds: []
+  scheme: internet-facing
+  sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06

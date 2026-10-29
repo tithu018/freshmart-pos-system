@@ -1,0 +1,20 @@
+{{- range $component := list "frontend" "backend" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "freshmart.name" $ }}-{{ $component }}
+  labels:
+    {{- include "freshmart.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $.Chart.Name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: {{ $component }}
+  ports:
+    - name: http
+      port: {{ ternary 8080 8081 (eq $component "frontend") }}
+      targetPort: http
+{{- end }}

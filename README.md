@@ -186,8 +186,10 @@ Task 10 adds reliability fixes and regression coverage without new business feat
 Task 11 adds Docker images, Compose and CI/CD image publishing without changing
 the business UI. Task 12 defines AWS infrastructure without provisioning it.
 Task 13 adds [local Kubernetes/Minikube deployment](devops/kubernetes/README.md)
-with PowerShell setup and resilience tests. Refunds, supplier management,
-multi-store features, Helm and AWS EKS application deployment are not implemented.
+with PowerShell setup and resilience tests. Task 14 adds [Helm charts and EKS
+deployment preparation](devops/helm/README.md), with tested local upgrade/rollback.
+Refunds, supplier management, multi-store features and live AWS EKS application
+deployment are not implemented.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.
 Commit the `.env.example` files and frontend lockfile so others can reproduce
