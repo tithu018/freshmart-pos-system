@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: freshmart-config
+data:
+  SPRING_PROFILES_ACTIVE: bootstrap
+  SERVER_PORT: "8081"
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: freshmart_kubernetes_test
+  DB_USERNAME: freshmart
+  POSTGRES_DB: freshmart_kubernetes_test
+  POSTGRES_USER: freshmart
+  PGDATA: /var/lib/postgresql/data/pgdata
+  JWT_TTL: PT1H
+  AUTH_COOKIE_SECURE: "false"
+  FRONTEND_ORIGINS: http://localhost:3000
+  BOOTSTRAP_USERS_ENABLED: "false"
+  CHECKOUT_TAX_RATE: "0"
+  STORE_TIME_ZONE: Asia/Colombo
+  STORE_NAME: FreshMart
+  SERVER_SHUTDOWN: graceful
+  SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: 20s

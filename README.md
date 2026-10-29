@@ -185,8 +185,9 @@ Settings remains a local demo. Card payments are simulated;
 Task 10 adds reliability fixes and regression coverage without new business features.
 Task 11 adds Docker images, Compose and CI/CD image publishing without changing
 the business UI. Task 12 defines AWS infrastructure without provisioning it.
-Refunds, supplier management, multi-store features and Kubernetes application
-deployment (Task 13) are not implemented.
+Task 13 adds [local Kubernetes/Minikube deployment](devops/kubernetes/README.md)
+with PowerShell setup and resilience tests. Refunds, supplier management,
+multi-store features, Helm and AWS EKS application deployment are not implemented.
 
 Local `.env` files, dependency folders, and build outputs are excluded from Git.
 Commit the `.env.example` files and frontend lockfile so others can reproduce

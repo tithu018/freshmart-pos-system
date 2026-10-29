@@ -35,3 +35,7 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 # Keep provider locks and safe *.example files in version control.
+
+# Kubernetes local credentials and test state (never commit generated Secrets)
+devops/kubernetes/.local/
+devops/kubernetes/*secret*.local.*
